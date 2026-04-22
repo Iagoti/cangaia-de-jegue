@@ -118,12 +118,6 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                   const SizedBox(height: 10),
                   _DashboardCard(
-                    title: 'Ingressos vendidos',
-                    value: '$totalTickets',
-                    icon: Icons.confirmation_num,
-                  ),
-                  const SizedBox(height: 10),
-                  _DashboardCard(
                     title: 'Valor total',
                     value: 'R\$ ${totalValue.toStringAsFixed(2)}',
                     icon: Icons.attach_money,
