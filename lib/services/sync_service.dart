@@ -43,15 +43,17 @@ class SyncService {
   }
 
   Future<void> upsertVenda(Map<String, Object?> venda) async {
+    final endpoint = '/rest/v1/vendas_ingressos?on_conflict=id';
+    final uri = Uri.parse('$_urlProjeto$endpoint');
     final response = await http.post(
-      Uri.parse('$_urlProjeto/rest/v1/vendas_ingressos?on_conflict=id'),
+      uri,
       headers: _headers(extra: {'Prefer': 'resolution=merge-duplicates'}),
       body: jsonEncode([venda]),
     );
     _checkResponse(
       response,
       contexto: 'upsert de venda',
-      endpoint: '/rest/v1/vendas_ingressos?on_conflict=id',
+      endpoint: endpoint,
     );
   }
 

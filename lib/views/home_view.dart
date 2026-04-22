@@ -15,6 +15,7 @@ class _HomeViewState extends State<HomeView> {
   static const double _ticketUnitPrice = 180.0;
   final _formKey = GlobalKey<FormState>();
   final _buyerController = TextEditingController();
+  final _buyerPhoneController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   final _controller = SalesController();
   int _installments = 1;
@@ -26,6 +27,7 @@ class _HomeViewState extends State<HomeView> {
   @override
   void dispose() {
     _buyerController.dispose();
+    _buyerPhoneController.dispose();
     _quantityController.dispose();
     super.dispose();
   }
@@ -37,6 +39,7 @@ class _HomeViewState extends State<HomeView> {
     try {
       await _controller.registerSale(
         buyerName: _buyerController.text.trim(),
+        buyerPhone: _buyerPhoneController.text.trim(),
         ticketQuantity: int.parse(_quantityController.text),
         totalAmount: _currentTotal,
         installments: _installments,
@@ -44,14 +47,13 @@ class _HomeViewState extends State<HomeView> {
       );
 
       _buyerController.clear();
+      _buyerPhoneController.clear();
       _quantityController.text = '1';
       _installments = 1;
       setState(() {});
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Venda registrada com sucesso!')),
-      );
+      Navigator.of(context).pop(true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -97,6 +99,14 @@ class _HomeViewState extends State<HomeView> {
                         decoration: const InputDecoration(labelText: 'Nome do comprador'),
                         validator: (value) =>
                             value == null || value.trim().isEmpty ? 'Informe o comprador' : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _buyerPhoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(labelText: 'Numero de telefone'),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty ? 'Informe o telefone' : null,
                       ),
                       const SizedBox(height: 10),
                       TextFormField(

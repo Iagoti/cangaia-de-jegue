@@ -24,7 +24,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 3,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE usuarios(
@@ -38,6 +38,7 @@ class AppDatabase {
           CREATE TABLE vendas_ingressos(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome_comprador TEXT NOT NULL,
+            telefone_comprador TEXT NOT NULL DEFAULT '',
             quantidade_ingressos INTEGER NOT NULL,
             valor_total REAL NOT NULL,
             parcelamento INTEGER NOT NULL,
@@ -45,7 +46,8 @@ class AppDatabase {
             criado_em TEXT NOT NULL,
             valor_recebido REAL NOT NULL DEFAULT 0,
             status_pagamento TEXT NOT NULL DEFAULT 'pendente',
-            recebido_em TEXT
+            recebido_em TEXT,
+            camisa_entregue_em TEXT
           )
         ''');
 
@@ -90,6 +92,16 @@ class AppDatabase {
         }
         if (oldVersion < 3) {
           await _migrateTableNamesToPortuguese(db);
+        }
+        if (oldVersion < 4) {
+          await db.execute(
+            "ALTER TABLE vendas_ingressos ADD COLUMN telefone_comprador TEXT NOT NULL DEFAULT ''",
+          );
+        }
+        if (oldVersion < 5) {
+          await db.execute(
+            'ALTER TABLE vendas_ingressos ADD COLUMN camisa_entregue_em TEXT',
+          );
         }
       },
     );

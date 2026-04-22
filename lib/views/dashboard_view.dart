@@ -102,71 +102,73 @@ class _DashboardViewState extends State<DashboardView> {
 
           return Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Bem-vindo(a), ${widget.loggedUser}',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 16),
-                _DashboardCard(
-                  title: 'Vendas registradas',
-                  value: '$totalSales',
-                  icon: Icons.receipt_long,
-                ),
-                const SizedBox(height: 10),
-                _DashboardCard(
-                  title: 'Ingressos vendidos',
-                  value: '$totalTickets',
-                  icon: Icons.confirmation_num,
-                ),
-                const SizedBox(height: 10),
-                _DashboardCard(
-                  title: 'Valor total',
-                  value: 'R\$ ${totalValue.toStringAsFixed(2)}',
-                  icon: Icons.attach_money,
-                ),
-                const SizedBox(height: 10),
-                _DashboardCard(
-                  title: 'Pendentes de sincronizacao',
-                  value: '$pendingSyncCount',
-                  icon: Icons.sync_problem,
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _goToSalesScreen,
-                    icon: const Icon(Icons.point_of_sale),
-                    label: const Text('Ir para registro de vendas'),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Bem-vindo(a), ${widget.loggedUser}',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _goToSalesListScreen,
-                    icon: const Icon(Icons.list_alt),
-                    label: const Text('Ver lista de vendas'),
+                  const SizedBox(height: 16),
+                  _DashboardCard(
+                    title: 'Vendas registradas',
+                    value: '$totalSales',
+                    icon: Icons.receipt_long,
                   ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _isSyncing ? null : _syncData,
-                    icon: _isSyncing
-                        ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.sync),
-                    label: Text(_isSyncing ? 'Sincronizando...' : 'Sincronizar dados'),
+                  const SizedBox(height: 10),
+                  _DashboardCard(
+                    title: 'Ingressos vendidos',
+                    value: '$totalTickets',
+                    icon: Icons.confirmation_num,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  _DashboardCard(
+                    title: 'Valor total',
+                    value: 'R\$ ${totalValue.toStringAsFixed(2)}',
+                    icon: Icons.attach_money,
+                  ),
+                  const SizedBox(height: 10),
+                  _DashboardCard(
+                    title: 'Pendentes de sincronizacao',
+                    value: '$pendingSyncCount',
+                    icon: Icons.sync_problem,
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _goToSalesScreen,
+                      icon: const Icon(Icons.point_of_sale),
+                      label: const Text('Ir para registro de vendas'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _goToSalesListScreen,
+                      icon: const Icon(Icons.list_alt),
+                      label: const Text('Ver lista de vendas'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _isSyncing ? null : _syncData,
+                      icon: _isSyncing
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.sync),
+                      label: Text(_isSyncing ? 'Sincronizando...' : 'Sincronizar dados'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },

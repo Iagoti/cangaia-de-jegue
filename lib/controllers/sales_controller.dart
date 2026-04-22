@@ -19,6 +19,7 @@ class SalesController {
   final _syncService = const SyncService();
   Future<int> registerSale({
     required String buyerName,
+    required String buyerPhone,
     required int ticketQuantity,
     required double totalAmount,
     required int installments,
@@ -31,6 +32,7 @@ class SalesController {
     return AppDatabase.instance.createSale(
       TicketSaleModel(
         buyerName: buyerName,
+        buyerPhone: buyerPhone,
         ticketQuantity: ticketQuantity,
         totalAmount: totalAmount,
         installments: installments,
@@ -49,6 +51,7 @@ class SalesController {
   Future<void> updateSale({
     required TicketSaleModel originalSale,
     required String buyerName,
+    required String buyerPhone,
     required int ticketQuantity,
     required double totalAmount,
     required int installments,
@@ -76,6 +79,7 @@ class SalesController {
 
     final updatedSale = originalSale.copyWith(
       buyerName: buyerName,
+      buyerPhone: buyerPhone,
       ticketQuantity: ticketQuantity,
       totalAmount: totalAmount,
       installments: installments,
@@ -95,6 +99,20 @@ class SalesController {
         ),
       );
     }
+  }
+
+  /// Grava data/hora da entrega da camisa e enfileira sincronizacao.
+  Future<String> markShirtDelivered(TicketSaleModel sale) async {
+    if (sale.id == null) {
+      throw ArgumentError('Venda invalida.');
+    }
+    if (sale.shirtDeliveredAt != null) {
+      throw ArgumentError('Camisa ja consta como entregue.');
+    }
+    final at = DateTime.now().toIso8601String();
+    final updated = sale.copyWith(shirtDeliveredAt: at);
+    await AppDatabase.instance.updateSale(updated);
+    return at;
   }
 
   Future<void> deleteSale(int id) async {

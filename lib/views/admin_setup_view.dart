@@ -1,6 +1,5 @@
 import 'package:cangaia_de_jegue/services/supabase_admin_service.dart';
 import 'package:cangaia_de_jegue/views/login_view.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -77,7 +76,9 @@ class _AdminSetupViewState extends State<AdminSetupView> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text('Administrador - Supabase'),
         actions: [
@@ -88,50 +89,50 @@ class _AdminSetupViewState extends State<AdminSetupView> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Criar tabelas no Supabase',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Informe a Service Role Key para executar a criacao das tabelas.',
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _serviceRoleController,
-              obscureText: _ocultarChave,
-              maxLines: 1,
-              decoration: InputDecoration(
-                labelText: 'Service Role Key',
-                suffixIcon: IconButton(
-                  tooltip: _ocultarChave ? 'Mostrar chave' : 'Ocultar chave',
-                  onPressed: () {
-                    setState(() => _ocultarChave = !_ocultarChave);
-                  },
-                  icon: Icon(
-                    _ocultarChave ? Icons.visibility : Icons.visibility_off,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Criar tabelas no Supabase',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Informe a Service Role Key para executar a criacao das tabelas.',
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _serviceRoleController,
+                obscureText: _ocultarChave,
+                maxLines: 1,
+                scrollPadding: const EdgeInsets.only(bottom: 120),
+                decoration: InputDecoration(
+                  isDense: true,
+                  labelText: 'Service Role Key',
+                  suffixIcon: IconButton(
+                    tooltip: _ocultarChave ? 'Mostrar chave' : 'Ocultar chave',
+                    onPressed: () {
+                      setState(() => _ocultarChave = !_ocultarChave);
+                    },
+                    icon: Icon(
+                      _ocultarChave ? Icons.visibility : Icons.visibility_off,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
                 onPressed: _isLoading ? null : _colarChave,
                 icon: const Icon(Icons.content_paste),
                 label: const Text('Colar da area de transferencia'),
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
+              const SizedBox(height: 16),
+              FilledButton.icon(
                 onPressed: _isLoading ? null : _criarTabelas,
                 icon: const Icon(Icons.cloud_upload),
                 label: _isLoading
@@ -142,8 +143,8 @@ class _AdminSetupViewState extends State<AdminSetupView> {
                       )
                     : const Text('Criar tabelas no Supabase'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
