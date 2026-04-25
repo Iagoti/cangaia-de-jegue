@@ -16,6 +16,7 @@ class SaleDetailView extends StatefulWidget {
 
 class _SaleDetailViewState extends State<SaleDetailView> {
   static const double _ticketUnitPrice = 180.0;
+  static const List<String> _paymentMethods = ['PIX', 'dinheiro', 'cartao'];
   final _formKey = GlobalKey<FormState>();
   final _controller = SalesController();
   late TicketSaleModel _sale;
@@ -26,7 +27,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
   bool _isSaving = false;
   bool _isDeleting = false;
   bool _isDeliveringShirt = false;
-  late final Future<List<PaymentReceiptModel>> _receiptsFuture;
+  late Future<List<PaymentReceiptModel>> _receiptsFuture;
 
   @override
   void initState() {
@@ -34,8 +35,9 @@ class _SaleDetailViewState extends State<SaleDetailView> {
     _sale = widget.sale;
     _buyerController = TextEditingController(text: _sale.buyerName);
     _buyerPhoneController = TextEditingController(text: _sale.buyerPhone);
-    _quantityController =
-        TextEditingController(text: _sale.ticketQuantity.toString());
+    _quantityController = TextEditingController(
+      text: _sale.ticketQuantity.toString(),
+    );
     _receiptsFuture = _sale.id == null
         ? Future.value([])
         : _controller.getReceiptsBySale(_sale.id!);
@@ -52,6 +54,12 @@ class _SaleDetailViewState extends State<SaleDetailView> {
   int get _currentQuantity => int.tryParse(_quantityController.text) ?? 0;
   double get _calculatedTotal => _currentQuantity * _ticketUnitPrice;
 
+  void _refreshReceipts() {
+    _receiptsFuture = _sale.id == null
+        ? Future.value([])
+        : _controller.getReceiptsBySale(_sale.id!);
+  }
+
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_isEditMode) return;
@@ -59,7 +67,9 @@ class _SaleDetailViewState extends State<SaleDetailView> {
     if (_calculatedTotal < _sale.receivedAmount) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Quantidade invalida: total nao pode ficar menor que o valor ja recebido.'),
+          content: Text(
+            'Quantidade invalida: total nao pode ficar menor que o valor ja recebido.',
+          ),
         ),
       );
       return;
@@ -82,9 +92,9 @@ class _SaleDetailViewState extends State<SaleDetailView> {
       Navigator.of(context).pop(true);
     } on ArgumentError catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message.toString())));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -228,12 +238,182 @@ class _SaleDetailViewState extends State<SaleDetailView> {
       }
     } on ArgumentError catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message.toString())));
     } finally {
       if (mounted) setState(() => _isDeliveringShirt = false);
     }
+  }
+
+  Future<void> _openRegisterPaymentDialog() async {
+    if (_sale.id == null || _sale.remainingAmount <= 0) return;
+
+    final paymentFormKey = GlobalKey<FormState>();
+    var amountText = _sale.remainingAmount.toStringAsFixed(2);
+    var selectedDate = DateTime.now();
+    var selectedPaymentMethod = _paymentMethods.first;
+    var isSubmitting = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> submitPayment() async {
+              if (!paymentFormKey.currentState!.validate()) return;
+
+              final amount = double.parse(
+                amountText.trim().replaceAll(',', '.'),
+              );
+              setDialogState(() => isSubmitting = true);
+              final messenger = ScaffoldMessenger.of(context);
+              final dialogNavigator = Navigator.of(context);
+
+              try {
+                final updatedSale = await _controller.registerPayment(
+                  sale: _sale,
+                  amount: amount,
+                  receivedAt: selectedDate,
+                  paymentMethod: selectedPaymentMethod,
+                );
+
+                if (!mounted) return;
+                setState(() {
+                  _sale = updatedSale;
+                  _refreshReceipts();
+                });
+                if (dialogNavigator.mounted) {
+                  dialogNavigator.pop();
+                }
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Pagamento registrado.')),
+                );
+              } on ArgumentError catch (error) {
+                if (!mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(content: Text(error.message.toString())),
+                );
+                if (dialogNavigator.mounted) {
+                  setDialogState(() => isSubmitting = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Registrar pagamento'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: paymentFormKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        initialValue: amountText,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Valor recebido',
+                          helperText:
+                              'Pendente: R\$ ${_sale.remainingAmount.toStringAsFixed(2)}',
+                        ),
+                        onChanged: (value) => amountText = value,
+                        validator: (value) {
+                          final amount = double.tryParse(
+                            (value ?? '').trim().replaceAll(',', '.'),
+                          );
+                          if (amount == null || amount <= 0) {
+                            return 'Informe um valor valido';
+                          }
+                          if (amount > _sale.remainingAmount) {
+                            return 'Valor maior que o pendente';
+                          }
+                          amountText = value ?? '';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      InkWell(
+                        onTap: isSubmitting
+                            ? null
+                            : () async {
+                                final pickedDate = await showDatePicker(
+                                  context: dialogContext,
+                                  initialDate: selectedDate,
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (pickedDate == null) return;
+                                setDialogState(() {
+                                  selectedDate = DateTime(
+                                    pickedDate.year,
+                                    pickedDate.month,
+                                    pickedDate.day,
+                                    selectedDate.hour,
+                                    selectedDate.minute,
+                                    selectedDate.second,
+                                  );
+                                });
+                              },
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: 'Data do pagamento',
+                            suffixIcon: Icon(Icons.calendar_today),
+                          ),
+                          child: Text(_formatDateOnly(selectedDate)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedPaymentMethod,
+                        decoration: const InputDecoration(
+                          labelText: 'Forma de pagamento',
+                        ),
+                        items: _paymentMethods
+                            .map(
+                              (method) => DropdownMenuItem(
+                                value: method,
+                                child: Text(_paymentMethodLabel(method)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: isSubmitting
+                            ? null
+                            : (value) {
+                                if (value == null) return;
+                                setDialogState(
+                                  () => selectedPaymentMethod = value,
+                                );
+                              },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: isSubmitting ? null : submitPayment,
+                  child: isSubmitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Salvar pagamento'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _deleteSale() async {
@@ -284,6 +464,25 @@ class _SaleDetailViewState extends State<SaleDetailView> {
         '${date.minute.toString().padLeft(2, '0')}';
   }
 
+  String _formatDateOnly(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/'
+        '${date.year}';
+  }
+
+  String _paymentMethodLabel(String paymentMethod) {
+    switch (paymentMethod) {
+      case 'PIX':
+        return 'PIX';
+      case 'dinheiro':
+        return 'Dinheiro';
+      case 'cartao':
+        return 'Cartao';
+      default:
+        return 'Nao informado';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -300,10 +499,27 @@ class _SaleDetailViewState extends State<SaleDetailView> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
-              Text('Valor recebido: R\$ ${_sale.receivedAmount.toStringAsFixed(2)}'),
-              Text('Valor pendente: R\$ ${_sale.remainingAmount.toStringAsFixed(2)}'),
-              Text('Data do ultimo recebimento: ${_formatDate(_sale.receivedAt)}'),
+              Text(
+                'Valor recebido: R\$ ${_sale.receivedAmount.toStringAsFixed(2)}',
+              ),
+              Text(
+                'Valor pendente: R\$ ${_sale.remainingAmount.toStringAsFixed(2)}',
+              ),
+              Text(
+                'Data do ultimo recebimento: ${_formatDate(_sale.receivedAt)}',
+              ),
               const SizedBox(height: 16),
+              if (_sale.remainingAmount > 0) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _openRegisterPaymentDialog,
+                    icon: const Icon(Icons.payments_outlined),
+                    label: const Text('Registrar pagamento'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               if (_sale.shirtDeliveredAt == null) ...[
                 SizedBox(
                   width: double.infinity,
@@ -329,7 +545,10 @@ class _SaleDetailViewState extends State<SaleDetailView> {
               ] else ...[
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.shade50,
                     borderRadius: BorderRadius.circular(8),
@@ -383,7 +602,10 @@ class _SaleDetailViewState extends State<SaleDetailView> {
                             title: Text(
                               'R\$ ${receipt.amount.toStringAsFixed(2)}',
                             ),
-                            subtitle: Text(_formatDate(receipt.receivedAt)),
+                            subtitle: Text(
+                              '${_formatDate(receipt.receivedAt)} - '
+                              '${_paymentMethodLabel(receipt.paymentMethod)}',
+                            ),
                           ),
                         )
                         .toList(),
@@ -394,16 +616,21 @@ class _SaleDetailViewState extends State<SaleDetailView> {
               TextFormField(
                 controller: _buyerController,
                 enabled: false,
-                decoration: const InputDecoration(labelText: 'Nome do comprador'),
+                decoration: const InputDecoration(
+                  labelText: 'Nome do comprador',
+                ),
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _buyerPhoneController,
                 enabled: _isEditMode,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Numero de telefone'),
-                validator: (value) =>
-                    value == null || value.trim().isEmpty ? 'Informe o telefone' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Numero de telefone',
+                ),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Informe o telefone'
+                    : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
@@ -411,10 +638,14 @@ class _SaleDetailViewState extends State<SaleDetailView> {
                 enabled: _isEditMode,
                 keyboardType: TextInputType.number,
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(labelText: 'Quantidade de ingressos'),
+                decoration: const InputDecoration(
+                  labelText: 'Quantidade de ingressos',
+                ),
                 validator: (value) {
                   final quantity = int.tryParse(value ?? '');
-                  if (quantity == null || quantity <= 0) return 'Quantidade invalida';
+                  if (quantity == null || quantity <= 0) {
+                    return 'Quantidade invalida';
+                  }
                   return null;
                 },
               ),
@@ -422,14 +653,20 @@ class _SaleDetailViewState extends State<SaleDetailView> {
               TextFormField(
                 enabled: false,
                 initialValue: 'R\$ ${_ticketUnitPrice.toStringAsFixed(2)}',
-                decoration: const InputDecoration(labelText: 'Valor por ingresso (fixo)'),
+                decoration: const InputDecoration(
+                  labelText: 'Valor por ingresso (fixo)',
+                ),
               ),
               const SizedBox(height: 10),
               TextFormField(
-                key: ValueKey<String>('detail_total_${_calculatedTotal.toStringAsFixed(2)}'),
+                key: ValueKey<String>(
+                  'detail_total_${_calculatedTotal.toStringAsFixed(2)}',
+                ),
                 enabled: false,
                 initialValue: 'R\$ ${_calculatedTotal.toStringAsFixed(2)}',
-                decoration: const InputDecoration(labelText: 'Valor total (calculado)'),
+                decoration: const InputDecoration(
+                  labelText: 'Valor total (calculado)',
+                ),
               ),
               const SizedBox(height: 10),
               TextFormField(

@@ -28,9 +28,9 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Future<void> _goToSalesListScreen() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SalesListView()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SalesListView()));
     if (mounted) setState(() {});
   }
 
@@ -60,9 +60,9 @@ class _DashboardViewState extends State<DashboardView> {
       setState(() {});
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Falha na sincronizacao: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Falha na sincronizacao: $error')));
     } finally {
       if (mounted) setState(() => _isSyncing = false);
     }
@@ -95,10 +95,14 @@ class _DashboardViewState extends State<DashboardView> {
           final sales = data[0] as List<TicketSaleModel>;
           final pendingSyncCount = data[1] as int;
           final totalSales = sales.length;
-          final totalValue =
-              sales.fold<double>(0, (sum, sale) => sum + sale.totalAmount);
-          final totalTickets =
-              sales.fold<int>(0, (sum, sale) => sum + sale.ticketQuantity);
+          final totalValue = sales.fold<double>(
+            0,
+            (sum, sale) => sum + sale.totalAmount,
+          );
+          final totalReceived = sales.fold<double>(
+            0,
+            (sum, sale) => sum + sale.receivedAmount,
+          );
 
           return Padding(
             padding: const EdgeInsets.all(16),
@@ -121,6 +125,12 @@ class _DashboardViewState extends State<DashboardView> {
                     title: 'Valor total',
                     value: 'R\$ ${totalValue.toStringAsFixed(2)}',
                     icon: Icons.attach_money,
+                  ),
+                  const SizedBox(height: 10),
+                  _DashboardCard(
+                    title: 'Total recebido',
+                    value: 'R\$ ${totalReceived.toStringAsFixed(2)}',
+                    icon: Icons.payments,
                   ),
                   const SizedBox(height: 10),
                   _DashboardCard(
@@ -158,7 +168,9 @@ class _DashboardViewState extends State<DashboardView> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.sync),
-                      label: Text(_isSyncing ? 'Sincronizando...' : 'Sincronizar dados'),
+                      label: Text(
+                        _isSyncing ? 'Sincronizando...' : 'Sincronizar dados',
+                      ),
                     ),
                   ),
                 ],

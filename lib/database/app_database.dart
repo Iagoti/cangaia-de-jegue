@@ -24,7 +24,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE usuarios(
@@ -57,6 +57,7 @@ class AppDatabase {
             venda_id INTEGER NOT NULL,
             valor REAL NOT NULL,
             recebido_em TEXT NOT NULL,
+            forma_pagamento TEXT NOT NULL DEFAULT 'nao_informado',
             FOREIGN KEY(venda_id) REFERENCES vendas_ingressos(id)
           )
         ''');
@@ -73,8 +74,22 @@ class AppDatabase {
           )
         ''');
 
-        await db.insert('usuarios', const UserModel(id: 1, username: 'Elana', password: 'cangaiadejegue').toMap());
-        await db.insert('usuarios', const UserModel(id: 2, username: 'William', password: 'cangaiadejegue').toMap());
+        await db.insert(
+          'usuarios',
+          const UserModel(
+            id: 1,
+            username: 'Elana',
+            password: 'cangaiadejegue',
+          ).toMap(),
+        );
+        await db.insert(
+          'usuarios',
+          const UserModel(
+            id: 2,
+            username: 'William',
+            password: 'cangaiadejegue',
+          ).toMap(),
+        );
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -101,6 +116,11 @@ class AppDatabase {
         if (oldVersion < 5) {
           await db.execute(
             'ALTER TABLE vendas_ingressos ADD COLUMN camisa_entregue_em TEXT',
+          );
+        }
+        if (oldVersion < 6) {
+          await db.execute(
+            "ALTER TABLE recibos_pagamento ADD COLUMN forma_pagamento TEXT NOT NULL DEFAULT 'nao_informado'",
           );
         }
       },
@@ -287,7 +307,9 @@ class AppDatabase {
   Future<void> _migrateTableNamesToPortuguese(Database db) async {
     if (await _tableExists(db, 'users')) {
       await db.execute('ALTER TABLE users RENAME TO usuarios');
-      await db.execute('ALTER TABLE usuarios RENAME COLUMN username TO usuario');
+      await db.execute(
+        'ALTER TABLE usuarios RENAME COLUMN username TO usuario',
+      );
       await db.execute('ALTER TABLE usuarios RENAME COLUMN password TO senha');
     }
 
@@ -323,7 +345,9 @@ class AppDatabase {
     }
 
     if (await _tableExists(db, 'payment_receipts')) {
-      await db.execute('ALTER TABLE payment_receipts RENAME TO recibos_pagamento');
+      await db.execute(
+        'ALTER TABLE payment_receipts RENAME TO recibos_pagamento',
+      );
       await db.execute(
         'ALTER TABLE recibos_pagamento RENAME COLUMN sale_id TO venda_id',
       );

@@ -96,9 +96,54 @@ class SalesController {
           saleId: originalSale.id!,
           amount: receivedNow,
           receivedAt: nowIso,
+          paymentMethod: 'nao_informado',
         ),
       );
     }
+  }
+
+  Future<TicketSaleModel> registerPayment({
+    required TicketSaleModel sale,
+    required double amount,
+    required DateTime receivedAt,
+    required String paymentMethod,
+  }) async {
+    if (sale.id == null) {
+      throw ArgumentError('Venda invalida para registrar pagamento.');
+    }
+    if (amount <= 0) {
+      throw ArgumentError('Valor recebido deve ser maior que zero.');
+    }
+
+    final updatedReceived = sale.receivedAmount + amount;
+    if (updatedReceived > sale.totalAmount + 0.001) {
+      throw ArgumentError('Valor recebido nao pode ultrapassar o valor total.');
+    }
+
+    final normalizedReceived = updatedReceived >= sale.totalAmount
+        ? sale.totalAmount
+        : updatedReceived;
+    final paymentStatus = normalizedReceived >= sale.totalAmount
+        ? 'pago'
+        : 'pendente';
+    final receivedAtIso = receivedAt.toIso8601String();
+    final updatedSale = sale.copyWith(
+      receivedAmount: normalizedReceived,
+      paymentStatus: paymentStatus,
+      receivedAt: receivedAtIso,
+    );
+
+    await AppDatabase.instance.updateSale(updatedSale);
+    await AppDatabase.instance.addReceipt(
+      PaymentReceiptModel(
+        saleId: sale.id!,
+        amount: amount,
+        receivedAt: receivedAtIso,
+        paymentMethod: paymentMethod,
+      ),
+    );
+
+    return updatedSale;
   }
 
   /// Grava data/hora da entrega da camisa e enfileira sincronizacao.
@@ -150,7 +195,9 @@ class SalesController {
           await _syncService.upsertVenda(saleMap);
         }
       } else if (entityType == 'recibos_pagamento') {
-        final receiptMap = await AppDatabase.instance.getReceiptMapById(entityId);
+        final receiptMap = await AppDatabase.instance.getReceiptMapById(
+          entityId,
+        );
         if (receiptMap != null) {
           await _syncService.upsertRecibo(receiptMap);
         }
