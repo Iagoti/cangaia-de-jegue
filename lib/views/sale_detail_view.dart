@@ -250,7 +250,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
     if (_sale.id == null || _sale.remainingAmount <= 0) return;
 
     final paymentFormKey = GlobalKey<FormState>();
-    var amountText = _sale.remainingAmount.toStringAsFixed(2);
+    var amountText = '';
     var selectedDate = DateTime.now();
     var selectedPaymentMethod = _paymentMethods.first;
     var isSubmitting = false;

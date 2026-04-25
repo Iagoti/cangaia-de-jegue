@@ -42,6 +42,22 @@ class SyncService {
         .toList();
   }
 
+  Future<List<Map<String, Object?>>> fetchDespesas() async {
+    final response = await http.get(
+      Uri.parse('$_urlProjeto/rest/v1/despesas?select=*'),
+      headers: _headers(),
+    );
+    _checkResponse(
+      response,
+      contexto: 'download de despesas',
+      endpoint: '/rest/v1/despesas?select=*',
+    );
+    final decoded = jsonDecode(response.body) as List<dynamic>;
+    return decoded
+        .map((item) => Map<String, Object?>.from(item as Map))
+        .toList();
+  }
+
   Future<void> upsertVenda(Map<String, Object?> venda) async {
     final endpoint = '/rest/v1/vendas_ingressos?on_conflict=id';
     final uri = Uri.parse('$_urlProjeto$endpoint');
@@ -50,11 +66,7 @@ class SyncService {
       headers: _headers(extra: {'Prefer': 'resolution=merge-duplicates'}),
       body: jsonEncode([venda]),
     );
-    _checkResponse(
-      response,
-      contexto: 'upsert de venda',
-      endpoint: endpoint,
-    );
+    _checkResponse(response, contexto: 'upsert de venda', endpoint: endpoint);
   }
 
   Future<void> deleteVenda(int id) async {
@@ -79,6 +91,19 @@ class SyncService {
       response,
       contexto: 'upsert de recibo',
       endpoint: '/rest/v1/recibos_pagamento?on_conflict=id',
+    );
+  }
+
+  Future<void> upsertDespesa(Map<String, Object?> despesa) async {
+    final response = await http.post(
+      Uri.parse('$_urlProjeto/rest/v1/despesas?on_conflict=id'),
+      headers: _headers(extra: {'Prefer': 'resolution=merge-duplicates'}),
+      body: jsonEncode([despesa]),
+    );
+    _checkResponse(
+      response,
+      contexto: 'upsert de despesa',
+      endpoint: '/rest/v1/despesas?on_conflict=id',
     );
   }
 

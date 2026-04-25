@@ -8,11 +8,13 @@ class SyncSummary {
     required this.sentEvents,
     required this.receivedSales,
     required this.receivedReceipts,
+    required this.receivedExpenses,
   });
 
   final int sentEvents;
   final int receivedSales;
   final int receivedReceipts;
+  final int receivedExpenses;
 }
 
 class SalesController {
@@ -201,6 +203,13 @@ class SalesController {
         if (receiptMap != null) {
           await _syncService.upsertRecibo(receiptMap);
         }
+      } else if (entityType == 'despesas') {
+        final expenseMap = await AppDatabase.instance.getExpenseMapById(
+          entityId,
+        );
+        if (expenseMap != null) {
+          await _syncService.upsertDespesa(expenseMap);
+        }
       }
 
       await AppDatabase.instance.markSyncEventAsSynced(eventId);
@@ -214,6 +223,7 @@ class SalesController {
     final sentEvents = await syncPendingEvents();
     final remoteSales = await _syncService.fetchVendas();
     final remoteReceipts = await _syncService.fetchRecibos();
+    final remoteExpenses = await _syncService.fetchDespesas();
 
     for (final sale in remoteSales) {
       await AppDatabase.instance.upsertSaleFromRemote(sale);
@@ -221,11 +231,15 @@ class SalesController {
     for (final receipt in remoteReceipts) {
       await AppDatabase.instance.upsertReceiptFromRemote(receipt);
     }
+    for (final expense in remoteExpenses) {
+      await AppDatabase.instance.upsertExpenseFromRemote(expense);
+    }
 
     return SyncSummary(
       sentEvents: sentEvents,
       receivedSales: remoteSales.length,
       receivedReceipts: remoteReceipts.length,
+      receivedExpenses: remoteExpenses.length,
     );
   }
 }

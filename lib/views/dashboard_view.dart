@@ -1,5 +1,7 @@
+import 'package:cangaia_de_jegue/controllers/expenses_controller.dart';
 import 'package:cangaia_de_jegue/controllers/sales_controller.dart';
 import 'package:cangaia_de_jegue/models/ticket_sale_model.dart';
+import 'package:cangaia_de_jegue/views/expense_form_view.dart';
 import 'package:cangaia_de_jegue/views/home_view.dart';
 import 'package:cangaia_de_jegue/views/login_view.dart';
 import 'package:cangaia_de_jegue/views/sales_list_view.dart';
@@ -16,6 +18,7 @@ class DashboardView extends StatefulWidget {
 
 class _DashboardViewState extends State<DashboardView> {
   final _salesController = SalesController();
+  final _expensesController = ExpensesController();
   bool _isSyncing = false;
 
   Future<void> _goToSalesScreen() async {
@@ -31,6 +34,13 @@ class _DashboardViewState extends State<DashboardView> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const SalesListView()));
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _goToExpenseForm() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ExpenseFormView()));
     if (mounted) setState(() {});
   }
 
@@ -53,7 +63,8 @@ class _DashboardViewState extends State<DashboardView> {
           content: Text(
             'Sync concluida. Enviados: ${result.sentEvents} | '
             'Vendas recebidas: ${result.receivedSales} | '
-            'Recibos recebidos: ${result.receivedReceipts}',
+            'Recibos recebidos: ${result.receivedReceipts} | '
+            'Despesas recebidas: ${result.receivedExpenses}',
           ),
         ),
       );
@@ -85,6 +96,7 @@ class _DashboardViewState extends State<DashboardView> {
         future: Future.wait<Object>([
           _salesController.getSales(),
           _salesController.getPendingSyncCount(),
+          _expensesController.getTotalExpenses(),
         ]),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -94,6 +106,7 @@ class _DashboardViewState extends State<DashboardView> {
           final data = snapshot.data!;
           final sales = data[0] as List<TicketSaleModel>;
           final pendingSyncCount = data[1] as int;
+          final totalExpenses = data[2] as double;
           final totalSales = sales.length;
           final totalValue = sales.fold<double>(
             0,
@@ -134,6 +147,12 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                   const SizedBox(height: 10),
                   _DashboardCard(
+                    title: 'Despesas',
+                    value: 'R\$ ${totalExpenses.toStringAsFixed(2)}',
+                    icon: Icons.money_off,
+                  ),
+                  const SizedBox(height: 10),
+                  _DashboardCard(
                     title: 'Pendentes de sincronizacao',
                     value: '$pendingSyncCount',
                     icon: Icons.sync_problem,
@@ -154,6 +173,15 @@ class _DashboardViewState extends State<DashboardView> {
                       onPressed: _goToSalesListScreen,
                       icon: const Icon(Icons.list_alt),
                       label: const Text('Ver lista de vendas'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _goToExpenseForm,
+                      icon: const Icon(Icons.add_card),
+                      label: const Text('Adicionar despesa'),
                     ),
                   ),
                   const SizedBox(height: 10),

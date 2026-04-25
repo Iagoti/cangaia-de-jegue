@@ -1,3 +1,4 @@
+import 'package:cangaia_de_jegue/models/expense_model.dart';
 import 'package:cangaia_de_jegue/models/payment_receipt_model.dart';
 import 'package:cangaia_de_jegue/models/ticket_sale_model.dart';
 import 'package:cangaia_de_jegue/models/user_model.dart';
@@ -24,7 +25,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE usuarios(
@@ -59,6 +60,15 @@ class AppDatabase {
             recebido_em TEXT NOT NULL,
             forma_pagamento TEXT NOT NULL DEFAULT 'nao_informado',
             FOREIGN KEY(venda_id) REFERENCES vendas_ingressos(id)
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE despesas(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            descricao TEXT NOT NULL,
+            valor REAL NOT NULL,
+            data_despesa TEXT NOT NULL
           )
         ''');
 
@@ -122,6 +132,16 @@ class AppDatabase {
           await db.execute(
             "ALTER TABLE recibos_pagamento ADD COLUMN forma_pagamento TEXT NOT NULL DEFAULT 'nao_informado'",
           );
+        }
+        if (oldVersion < 7) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS despesas(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              descricao TEXT NOT NULL,
+              valor REAL NOT NULL,
+              data_despesa TEXT NOT NULL
+            )
+          ''');
         }
       },
     );
@@ -218,6 +238,34 @@ class AppDatabase {
     return rows.map(PaymentReceiptModel.fromMap).toList();
   }
 
+  Future<int> createExpense(ExpenseModel expense) async {
+    final db = await database;
+    final expenseId = await db.insert('despesas', expense.toMap());
+    await _enqueueSyncEvent(
+      entityType: 'despesas',
+      entityId: expenseId,
+      operation: 'create',
+    );
+    return expenseId;
+  }
+
+  Future<List<ExpenseModel>> listExpenses() async {
+    final db = await database;
+    final rows = await db.query(
+      'despesas',
+      orderBy: 'data_despesa DESC, id DESC',
+    );
+    return rows.map(ExpenseModel.fromMap).toList();
+  }
+
+  Future<double> sumExpenses() async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT SUM(valor) AS total FROM despesas',
+    );
+    return ((result.first['total'] as num?) ?? 0).toDouble();
+  }
+
   Future<int> countPendingSyncEvents() async {
     final db = await database;
     final result = await db.rawQuery(
@@ -259,6 +307,18 @@ class AppDatabase {
     return rows.first;
   }
 
+  Future<Map<String, Object?>?> getExpenseMapById(int id) async {
+    final db = await database;
+    final rows = await db.query(
+      'despesas',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first;
+  }
+
   Future<void> markSyncEventAsSynced(int id) async {
     final db = await database;
     await db.update(
@@ -283,6 +343,15 @@ class AppDatabase {
     return db.insert(
       'recibos_pagamento',
       receiptMap,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<int> upsertExpenseFromRemote(Map<String, Object?> expenseMap) async {
+    final db = await database;
+    return db.insert(
+      'despesas',
+      expenseMap,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
