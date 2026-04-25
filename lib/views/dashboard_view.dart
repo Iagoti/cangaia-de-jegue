@@ -2,6 +2,7 @@ import 'package:cangaia_de_jegue/controllers/expenses_controller.dart';
 import 'package:cangaia_de_jegue/controllers/sales_controller.dart';
 import 'package:cangaia_de_jegue/models/ticket_sale_model.dart';
 import 'package:cangaia_de_jegue/views/expense_form_view.dart';
+import 'package:cangaia_de_jegue/views/expenses_list_view.dart';
 import 'package:cangaia_de_jegue/views/home_view.dart';
 import 'package:cangaia_de_jegue/views/login_view.dart';
 import 'package:cangaia_de_jegue/views/sales_list_view.dart';
@@ -41,6 +42,13 @@ class _DashboardViewState extends State<DashboardView> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const ExpenseFormView()));
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _goToExpensesListScreen() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ExpensesListView()));
     if (mounted) setState(() {});
   }
 
@@ -182,6 +190,15 @@ class _DashboardViewState extends State<DashboardView> {
                       onPressed: _goToExpenseForm,
                       icon: const Icon(Icons.add_card),
                       label: const Text('Adicionar despesa'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _goToExpensesListScreen,
+                      icon: const Icon(Icons.receipt),
+                      label: const Text('Ver lista de despesas'),
                     ),
                   ),
                   const SizedBox(height: 10),

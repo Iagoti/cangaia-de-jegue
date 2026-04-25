@@ -23,6 +23,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
   late final TextEditingController _buyerController;
   late final TextEditingController _buyerPhoneController;
   late final TextEditingController _quantityController;
+  late int _installments;
   bool _isEditMode = false;
   bool _isSaving = false;
   bool _isDeleting = false;
@@ -38,6 +39,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
     _quantityController = TextEditingController(
       text: _sale.ticketQuantity.toString(),
     );
+    _installments = _sale.installments;
     _receiptsFuture = _sale.id == null
         ? Future.value([])
         : _controller.getReceiptsBySale(_sale.id!);
@@ -84,7 +86,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
         buyerPhone: _buyerPhoneController.text.trim(),
         ticketQuantity: int.parse(_quantityController.text),
         totalAmount: _calculatedTotal,
-        installments: _sale.installments,
+        installments: _installments,
         receivedNow: 0,
       );
 
@@ -449,6 +451,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
     setState(() {
       _quantityController.text = _sale.ticketQuantity.toString();
       _buyerPhoneController.text = _sale.buyerPhone;
+      _installments = _sale.installments;
       _isEditMode = false;
     });
   }
@@ -669,10 +672,17 @@ class _SaleDetailViewState extends State<SaleDetailView> {
                 ),
               ),
               const SizedBox(height: 10),
-              TextFormField(
-                enabled: false,
-                initialValue: '${_sale.installments}x',
+              DropdownButtonFormField<int>(
+                initialValue: _installments,
                 decoration: const InputDecoration(labelText: 'Parcelamento'),
+                items: const [
+                  DropdownMenuItem(value: 1, child: Text('1x')),
+                  DropdownMenuItem(value: 2, child: Text('2x')),
+                  DropdownMenuItem(value: 3, child: Text('3x')),
+                ],
+                onChanged: _isEditMode
+                    ? (value) => setState(() => _installments = value ?? 1)
+                    : null,
               ),
               const SizedBox(height: 16),
               Row(
