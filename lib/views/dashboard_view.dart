@@ -87,18 +87,99 @@ class _DashboardViewState extends State<DashboardView> {
     }
   }
 
+  void _closeDrawerAndRun(VoidCallback action) {
+    Navigator.of(context).pop();
+    action();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sair',
+      appBar: AppBar(title: const Text('Dashboard')),
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.dashboard),
+                title: const Text('Dashboard'),
+                subtitle: Text('Usuario: ${widget.loggedUser}'),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.point_of_sale),
+                title: const Text('Registrar venda'),
+                onTap: () => _closeDrawerAndRun(_goToSalesScreen),
+              ),
+              ListTile(
+                leading: const Icon(Icons.list_alt),
+                title: const Text('Lista de vendas'),
+                onTap: () => _closeDrawerAndRun(_goToSalesListScreen),
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_card),
+                title: const Text('Adicionar despesa'),
+                onTap: () => _closeDrawerAndRun(_goToExpenseForm),
+              ),
+              ListTile(
+                leading: const Icon(Icons.receipt),
+                title: const Text('Lista de despesas'),
+                onTap: () => _closeDrawerAndRun(_goToExpensesListScreen),
+              ),
+              ListTile(
+                leading: _isSyncing
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync),
+                title: Text(
+                  _isSyncing ? 'Sincronizando...' : 'Sincronizar dados',
+                ),
+                onTap: _isSyncing ? null : () => _closeDrawerAndRun(_syncData),
+              ),
+              const Spacer(),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.logout),
+                title: const Text('Sair'),
+                onTap: () => _closeDrawerAndRun(_logout),
+              ),
+            ],
           ),
-        ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Material(
+            elevation: 6,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _goToSalesScreen,
+                      icon: const Icon(Icons.point_of_sale),
+                      label: const Text('Venda'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _goToExpenseForm,
+                      icon: const Icon(Icons.add_card),
+                      label: const Text('Despesa'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
       body: FutureBuilder<List<Object>>(
         future: Future.wait<Object>([
@@ -126,7 +207,7 @@ class _DashboardViewState extends State<DashboardView> {
           );
 
           return Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,59 +245,6 @@ class _DashboardViewState extends State<DashboardView> {
                     title: 'Pendentes de sincronizacao',
                     value: '$pendingSyncCount',
                     icon: Icons.sync_problem,
-                  ),
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _goToSalesScreen,
-                      icon: const Icon(Icons.point_of_sale),
-                      label: const Text('Ir para registro de vendas'),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _goToSalesListScreen,
-                      icon: const Icon(Icons.list_alt),
-                      label: const Text('Ver lista de vendas'),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _goToExpenseForm,
-                      icon: const Icon(Icons.add_card),
-                      label: const Text('Adicionar despesa'),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _goToExpensesListScreen,
-                      icon: const Icon(Icons.receipt),
-                      label: const Text('Ver lista de despesas'),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _isSyncing ? null : _syncData,
-                      icon: _isSyncing
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.sync),
-                      label: Text(
-                        _isSyncing ? 'Sincronizando...' : 'Sincronizar dados',
-                      ),
-                    ),
                   ),
                 ],
               ),
