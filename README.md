@@ -39,11 +39,3 @@ Analise o projeto:
 ```sh
 flutter analyze
 ```
-
-## Usuarios Padrao
-
-- Usuario: `Elana`
-- Usuario: `William`
-- Senha: `cangaiadejegue`
-
-Tambem existe acesso administrativo usado na configuracao inicial do banco.
