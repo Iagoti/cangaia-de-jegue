@@ -30,9 +30,9 @@ class _DashboardViewState extends State<DashboardView> {
     );
     if (!mounted) return;
     if (saved == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Venda salva com sucesso.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Venda salva com sucesso.')));
     }
     setState(() {});
   }
@@ -47,9 +47,9 @@ class _DashboardViewState extends State<DashboardView> {
   Future<void> _goToExpenseForm() async {
     final saved = await Navigator.of(
       context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => const ExpenseFormView()));
+    ).push<String>(MaterialPageRoute(builder: (_) => const ExpenseFormView()));
     if (!mounted) return;
-    if (saved == true) {
+    if (saved == 'created') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Despesa salva com sucesso.')),
       );
@@ -214,6 +214,25 @@ class _DashboardViewState extends State<DashboardView> {
             ),
           ),
         ),
+      ),
+      floatingActionButton: FutureBuilder<int>(
+        future: _salesController.getPendingSyncCount(),
+        builder: (context, snapshot) {
+          final pendingSyncCount = snapshot.data ?? 0;
+          if (pendingSyncCount <= 0) return const SizedBox.shrink();
+
+          return FloatingActionButton.extended(
+            onPressed: _isSyncing ? null : _syncData,
+            icon: _isSyncing
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sync),
+            label: Text(_isSyncing ? 'Sincronizando...' : 'Sincronizar'),
+          );
+        },
       ),
       body: FutureBuilder<List<Object>>(
         future: Future.wait<Object>([

@@ -107,6 +107,18 @@ class SyncService {
     );
   }
 
+  Future<void> deleteDespesa(int id) async {
+    final response = await http.delete(
+      Uri.parse('$_urlProjeto/rest/v1/despesas?id=eq.$id'),
+      headers: _headers(),
+    );
+    _checkResponse(
+      response,
+      contexto: 'delete de despesa',
+      endpoint: '/rest/v1/despesas?id=eq.$id',
+    );
+  }
+
   Map<String, String> _headers({Map<String, String>? extra}) {
     return {
       'apikey': _chavePublica,

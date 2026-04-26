@@ -23,6 +23,35 @@ class ExpensesController {
     );
   }
 
+  Future<void> updateExpense({
+    required ExpenseModel originalExpense,
+    required String description,
+    required double amount,
+    required DateTime expenseDate,
+  }) async {
+    if (originalExpense.id == null) {
+      throw ArgumentError('Despesa invalida.');
+    }
+    if (description.trim().isEmpty) {
+      throw ArgumentError('Informe a descricao da despesa.');
+    }
+    if (amount <= 0) {
+      throw ArgumentError('Valor da despesa deve ser maior que zero.');
+    }
+
+    await AppDatabase.instance.updateExpense(
+      originalExpense.copyWith(
+        description: description.trim(),
+        amount: amount,
+        expenseDate: expenseDate.toIso8601String(),
+      ),
+    );
+  }
+
+  Future<void> deleteExpense(int id) async {
+    await AppDatabase.instance.deleteExpense(id);
+  }
+
   Future<List<ExpenseModel>> getExpenses() {
     return AppDatabase.instance.listExpenses();
   }

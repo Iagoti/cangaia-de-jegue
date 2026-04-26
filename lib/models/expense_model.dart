@@ -28,4 +28,18 @@ class ExpenseModel {
       'data_despesa': expenseDate,
     };
   }
+
+  ExpenseModel copyWith({
+    int? id,
+    String? description,
+    double? amount,
+    String? expenseDate,
+  }) {
+    return ExpenseModel(
+      id: id ?? this.id,
+      description: description ?? this.description,
+      amount: amount ?? this.amount,
+      expenseDate: expenseDate ?? this.expenseDate,
+    );
+  }
 }

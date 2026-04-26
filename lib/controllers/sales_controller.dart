@@ -203,6 +203,8 @@ class SalesController {
         if (receiptMap != null) {
           await _syncService.upsertRecibo(receiptMap);
         }
+      } else if (entityType == 'despesas' && operation == 'delete') {
+        await _syncService.deleteDespesa(entityId);
       } else if (entityType == 'despesas') {
         final expenseMap = await AppDatabase.instance.getExpenseMapById(
           entityId,

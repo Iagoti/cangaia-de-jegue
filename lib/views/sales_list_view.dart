@@ -28,9 +28,7 @@ class _SalesListViewState extends State<SalesListView> {
     if (normalizedQuery.isEmpty) return sales;
 
     return sales
-        .where(
-          (sale) => sale.buyerName.toLowerCase().contains(normalizedQuery),
-        )
+        .where((sale) => sale.buyerName.toLowerCase().contains(normalizedQuery))
         .toList();
   }
 
@@ -77,7 +75,9 @@ class _SalesListViewState extends State<SalesListView> {
                       return Card(
                         child: ListTile(
                           onTap: () async {
-                            final result = await Navigator.of(context).push<String>(
+                            final navigator = Navigator.of(context);
+                            final messenger = ScaffoldMessenger.of(context);
+                            final result = await navigator.push<String>(
                               MaterialPageRoute(
                                 builder: (_) => SaleDetailView(sale: sale),
                               ),
@@ -86,7 +86,7 @@ class _SalesListViewState extends State<SalesListView> {
                               final message = result == 'updated'
                                   ? 'Venda atualizada com sucesso.'
                                   : 'Venda excluida com sucesso.';
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              messenger.showSnackBar(
                                 SnackBar(content: Text(message)),
                               );
                               setState(() {});

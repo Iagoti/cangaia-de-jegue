@@ -1,8 +1,11 @@
 import 'package:cangaia_de_jegue/controllers/expenses_controller.dart';
+import 'package:cangaia_de_jegue/models/expense_model.dart';
 import 'package:flutter/material.dart';
 
 class ExpenseFormView extends StatefulWidget {
-  const ExpenseFormView({super.key});
+  const ExpenseFormView({super.key, this.expense});
+
+  final ExpenseModel? expense;
 
   @override
   State<ExpenseFormView> createState() => _ExpenseFormViewState();
@@ -15,6 +18,19 @@ class _ExpenseFormViewState extends State<ExpenseFormView> {
   final _controller = ExpensesController();
   DateTime _expenseDate = DateTime.now();
   bool _isSaving = false;
+
+  bool get _isEditMode => widget.expense != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final expense = widget.expense;
+    if (expense == null) return;
+
+    _descriptionController.text = expense.description;
+    _amountController.text = expense.amount.toStringAsFixed(2);
+    _expenseDate = DateTime.tryParse(expense.expenseDate) ?? DateTime.now();
+  }
 
   @override
   void dispose() {
@@ -48,16 +64,27 @@ class _ExpenseFormViewState extends State<ExpenseFormView> {
 
     setState(() => _isSaving = true);
     try {
-      await _controller.registerExpense(
-        description: _descriptionController.text,
-        amount: double.parse(
-          _amountController.text.trim().replaceAll(',', '.'),
-        ),
-        expenseDate: _expenseDate,
+      final amount = double.parse(
+        _amountController.text.trim().replaceAll(',', '.'),
       );
 
+      if (_isEditMode) {
+        await _controller.updateExpense(
+          originalExpense: widget.expense!,
+          description: _descriptionController.text,
+          amount: amount,
+          expenseDate: _expenseDate,
+        );
+      } else {
+        await _controller.registerExpense(
+          description: _descriptionController.text,
+          amount: amount,
+          expenseDate: _expenseDate,
+        );
+      }
+
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(_isEditMode ? 'updated' : 'created');
     } on ArgumentError catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -77,7 +104,9 @@ class _ExpenseFormViewState extends State<ExpenseFormView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Adicionar despesa')),
+      appBar: AppBar(
+        title: Text(_isEditMode ? 'Editar despesa' : 'Adicionar despesa'),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Card(
@@ -135,7 +164,11 @@ class _ExpenseFormViewState extends State<ExpenseFormView> {
                               width: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Registrar despesa'),
+                          : Text(
+                              _isEditMode
+                                  ? 'Salvar despesa'
+                                  : 'Registrar despesa',
+                            ),
                     ),
                   ),
                 ],

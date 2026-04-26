@@ -249,6 +249,41 @@ class AppDatabase {
     return expenseId;
   }
 
+  Future<int> updateExpense(ExpenseModel expense) async {
+    final db = await database;
+    final updatedRows = await db.update(
+      'despesas',
+      expense.toMap(),
+      where: 'id = ?',
+      whereArgs: [expense.id],
+    );
+    if (expense.id != null && updatedRows > 0) {
+      await _enqueueSyncEvent(
+        entityType: 'despesas',
+        entityId: expense.id,
+        operation: 'update',
+      );
+    }
+    return updatedRows;
+  }
+
+  Future<int> deleteExpense(int id) async {
+    final db = await database;
+    final deletedRows = await db.delete(
+      'despesas',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (deletedRows > 0) {
+      await _enqueueSyncEvent(
+        entityType: 'despesas',
+        entityId: id,
+        operation: 'delete',
+      );
+    }
+    return deletedRows;
+  }
+
   Future<List<ExpenseModel>> listExpenses() async {
     final db = await database;
     final rows = await db.query(

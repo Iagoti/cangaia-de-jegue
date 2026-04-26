@@ -32,16 +32,53 @@ class _ExpensesListViewState extends State<ExpensesListView> {
         .toList();
   }
 
-  Future<void> _goToExpenseForm() async {
-    final changed = await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => const ExpenseFormView()));
-    if (changed == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Despesa salva com sucesso.')),
-      );
+  Future<void> _openExpenseForm([ExpenseModel? expense]) async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => ExpenseFormView(expense: expense)),
+    );
+    if (result != null && mounted) {
+      final message = result == 'updated'
+          ? 'Despesa atualizada com sucesso.'
+          : 'Despesa salva com sucesso.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       setState(() {});
     }
+  }
+
+  Future<void> _deleteExpense(ExpenseModel expense) async {
+    if (expense.id == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Excluir despesa'),
+          content: Text(
+            'Deseja realmente excluir a despesa "${expense.description}"?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Excluir'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+    await _expensesController.deleteExpense(expense.id!);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Despesa excluida com sucesso.')),
+    );
+    setState(() {});
   }
 
   String _formatDate(String isoDate) {
@@ -57,7 +94,7 @@ class _ExpensesListViewState extends State<ExpensesListView> {
     return Scaffold(
       appBar: AppBar(title: const Text('Lista de despesas')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _goToExpenseForm,
+        onPressed: _openExpenseForm,
         icon: const Icon(Icons.add),
         label: const Text('Despesa'),
       ),
@@ -99,14 +136,27 @@ class _ExpensesListViewState extends State<ExpensesListView> {
                       final expense = filteredExpenses[index];
                       return Card(
                         child: ListTile(
+                          onTap: () => _openExpenseForm(expense),
                           leading: const Icon(Icons.money_off),
                           title: Text(expense.description),
                           subtitle: Text(
                             'Data: ${_formatDate(expense.expenseDate)}',
                           ),
-                          trailing: Text(
-                            'R\$ ${expense.amount.toStringAsFixed(2)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'R\$ ${expense.amount.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => _deleteExpense(expense),
+                                icon: const Icon(Icons.delete_outline),
+                                tooltip: 'Excluir despesa',
+                              ),
+                            ],
                           ),
                         ),
                       );
