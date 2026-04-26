@@ -1,17 +1,49 @@
-# cangaia_de_jegue
+# Cangaia de Jegue
 
-A new Flutter project.
+Aplicativo Flutter para controle de vendas da Cavalgada Cangaia de Jegue.
 
-## Getting Started
+## Funcionalidades
 
-This project is a starting point for a Flutter application.
+- Login de vendedores.
+- Registro, edicao e exclusao de vendas.
+- Controle de pagamentos e recibos.
+- Registro de entrega de camisas com mensagem via WhatsApp.
+- Cadastro, edicao e exclusao de despesas.
+- Dashboard com totais de vendas, valores recebidos, pendencias e despesas.
+- Sincronizacao com Supabase quando houver registros pendentes.
+- Icone e logo personalizados do evento.
 
-A few resources to get you started if this is your first Flutter project:
+## Tecnologias
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Flutter
+- Dart
+- SQLite local com `sqflite`
+- Supabase via API REST
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Como Rodar
+
+Instale as dependencias:
+
+```sh
+flutter pub get
+```
+
+Execute o app:
+
+```sh
+flutter run
+```
+
+Analise o projeto:
+
+```sh
+flutter analyze
+```
+
+## Usuarios Padrao
+
+- Usuario: `Elana`
+- Usuario: `William`
+- Senha: `cangaiadejegue`
+
+Tambem existe acesso administrativo usado na configuracao inicial do banco.
