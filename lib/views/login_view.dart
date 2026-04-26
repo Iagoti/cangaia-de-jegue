@@ -72,7 +72,6 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login - Cangaia de Jegue')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -86,24 +85,10 @@ class _LoginViewState extends State<LoginView> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                          horizontal: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6F1AB6),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          '9a Cavalgada Cangaia de Jegue',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      Image.asset(
+                        'assets/images/login_logo.png',
+                        height: 220,
+                        fit: BoxFit.contain,
                       ),
                       const SizedBox(height: 16),
                       const Text(
@@ -138,11 +123,6 @@ class _LoginViewState extends State<LoginView> {
                                 )
                               : const Text('Entrar'),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Usuarios padrao: Elana e William\nSenha: cangaiadejegue',
-                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),

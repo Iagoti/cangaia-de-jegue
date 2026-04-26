@@ -91,7 +91,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
       );
 
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop('updated');
     } on ArgumentError catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -106,7 +106,6 @@ class _SaleDetailViewState extends State<SaleDetailView> {
     return input.replaceAll(RegExp(r'[^0-9]'), '');
   }
 
-  /// Numero internacional sem + (ex.: 5511987654321), para wa.me / api.whatsapp.com.
   String _phoneForWhatsApp(String input) {
     var digits = _digitsOnly(input);
     while (digits.startsWith('0')) {
@@ -222,7 +221,10 @@ class _SaleDetailViewState extends State<SaleDetailView> {
         _sale = _sale.copyWith(shirtDeliveredAt: at);
       });
 
-      final msg = 'Ola, ${_sale.buyerName}! Camisa entregue.';
+      final shirtQuantity = _sale.ticketQuantity;
+      final shirtLabel = shirtQuantity == 1 ? 'camisa' : 'camisas';
+      final msg =
+          'Ola, ${_sale.buyerName}! Camisa entregue. Quantidade: $shirtQuantity $shirtLabel.';
       final whatsOk = await _launchWhatsAppWithMessage(msg);
       if (!mounted) return;
       if (!whatsOk) {
@@ -444,7 +446,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
     setState(() => _isDeleting = true);
     await _controller.deleteSale(_sale.id!);
     if (!mounted) return;
-    Navigator.of(context).pop(true);
+    Navigator.of(context).pop('deleted');
   }
 
   void _cancelEdit() {

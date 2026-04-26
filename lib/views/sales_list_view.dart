@@ -77,12 +77,18 @@ class _SalesListViewState extends State<SalesListView> {
                       return Card(
                         child: ListTile(
                           onTap: () async {
-                            final changed = await Navigator.of(context).push<bool>(
+                            final result = await Navigator.of(context).push<String>(
                               MaterialPageRoute(
                                 builder: (_) => SaleDetailView(sale: sale),
                               ),
                             );
-                            if (changed == true && mounted) {
+                            if (result != null && mounted) {
+                              final message = result == 'updated'
+                                  ? 'Venda atualizada com sucesso.'
+                                  : 'Venda excluida com sucesso.';
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(message)),
+                              );
                               setState(() {});
                             }
                           },

@@ -23,12 +23,18 @@ class _DashboardViewState extends State<DashboardView> {
   bool _isSyncing = false;
 
   Future<void> _goToSalesScreen() async {
-    await Navigator.of(context).push(
+    final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => HomeView(loggedUser: widget.loggedUser),
       ),
     );
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    if (saved == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Venda salva com sucesso.')),
+      );
+    }
+    setState(() {});
   }
 
   Future<void> _goToSalesListScreen() async {
@@ -39,10 +45,16 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Future<void> _goToExpenseForm() async {
-    await Navigator.of(
+    final saved = await Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => const ExpenseFormView()));
-    if (mounted) setState(() {});
+    ).push<bool>(MaterialPageRoute(builder: (_) => const ExpenseFormView()));
+    if (!mounted) return;
+    if (saved == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Despesa salva com sucesso.')),
+      );
+    }
+    setState(() {});
   }
 
   Future<void> _goToExpensesListScreen() async {
@@ -98,36 +110,58 @@ class _DashboardViewState extends State<DashboardView> {
       appBar: AppBar(title: const Text('Dashboard')),
       drawer: Drawer(
         child: SafeArea(
-          child: Column(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
             children: [
-              ListTile(
-                leading: const Icon(Icons.dashboard),
-                title: const Text('Dashboard'),
-                subtitle: Text('Usuario: ${widget.loggedUser}'),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.dashboard, size: 32),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Dashboard',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Usuario: ${widget.loggedUser}'),
+                  ],
+                ),
               ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.point_of_sale),
+              const SizedBox(height: 16),
+              const _DrawerSectionTitle(title: 'Vendas'),
+              _DrawerMenuItem(
+                icon: const Icon(Icons.point_of_sale),
                 title: const Text('Registrar venda'),
                 onTap: () => _closeDrawerAndRun(_goToSalesScreen),
               ),
-              ListTile(
-                leading: const Icon(Icons.list_alt),
+              _DrawerMenuItem(
+                icon: const Icon(Icons.list_alt),
                 title: const Text('Lista de vendas'),
                 onTap: () => _closeDrawerAndRun(_goToSalesListScreen),
               ),
-              ListTile(
-                leading: const Icon(Icons.add_card),
+              const SizedBox(height: 12),
+              const _DrawerSectionTitle(title: 'Despesas'),
+              _DrawerMenuItem(
+                icon: const Icon(Icons.add_card),
                 title: const Text('Adicionar despesa'),
                 onTap: () => _closeDrawerAndRun(_goToExpenseForm),
               ),
-              ListTile(
-                leading: const Icon(Icons.receipt),
+              _DrawerMenuItem(
+                icon: const Icon(Icons.receipt),
                 title: const Text('Lista de despesas'),
                 onTap: () => _closeDrawerAndRun(_goToExpensesListScreen),
               ),
-              ListTile(
-                leading: _isSyncing
+              const SizedBox(height: 12),
+              const _DrawerSectionTitle(title: 'Sistema'),
+              _DrawerMenuItem(
+                icon: _isSyncing
                     ? const SizedBox(
                         height: 24,
                         width: 24,
@@ -139,10 +173,10 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
                 onTap: _isSyncing ? null : () => _closeDrawerAndRun(_syncData),
               ),
-              const Spacer(),
+              const SizedBox(height: 20),
               const Divider(),
-              ListTile(
-                leading: const Icon(Icons.logout),
+              _DrawerMenuItem(
+                icon: const Icon(Icons.logout),
                 title: const Text('Sair'),
                 onTap: () => _closeDrawerAndRun(_logout),
               ),
@@ -251,6 +285,54 @@ class _DashboardViewState extends State<DashboardView> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _DrawerSectionTitle extends StatelessWidget {
+  const _DrawerSectionTitle({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+      child: Text(
+        title.toUpperCase(),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.primary,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawerMenuItem extends StatelessWidget {
+  const _DrawerMenuItem({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  final Widget icon;
+  final Widget title;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: ListTile(
+        leading: icon,
+        title: DefaultTextStyle.merge(
+          style: const TextStyle(fontWeight: FontWeight.w600),
+          child: title,
+        ),
+        onTap: onTap,
       ),
     );
   }

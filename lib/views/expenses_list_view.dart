@@ -37,6 +37,9 @@ class _ExpensesListViewState extends State<ExpensesListView> {
       context,
     ).push<bool>(MaterialPageRoute(builder: (_) => const ExpenseFormView()));
     if (changed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Despesa salva com sucesso.')),
+      );
       setState(() {});
     }
   }
