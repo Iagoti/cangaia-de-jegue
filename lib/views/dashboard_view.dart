@@ -250,6 +250,10 @@ class _DashboardViewState extends State<DashboardView> {
           final pendingSyncCount = data[1] as int;
           final totalExpenses = data[2] as double;
           final totalSales = sales.length;
+          final totalShirts = sales.fold<int>(
+            0,
+            (sum, sale) => sum + sale.ticketQuantity,
+          );
           final totalValue = sales.fold<double>(
             0,
             (sum, sale) => sum + sale.totalAmount,
@@ -274,6 +278,12 @@ class _DashboardViewState extends State<DashboardView> {
                     title: 'Vendas registradas',
                     value: '$totalSales',
                     icon: Icons.receipt_long,
+                  ),
+                  const SizedBox(height: 10),
+                  _DashboardCard(
+                    title: 'Camisas vendidas',
+                    value: '$totalShirts',
+                    icon: Icons.checkroom,
                   ),
                   const SizedBox(height: 10),
                   _DashboardCard(
