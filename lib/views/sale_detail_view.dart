@@ -1,5 +1,6 @@
 import 'package:cangaia_de_jegue/controllers/sales_controller.dart';
 import 'package:cangaia_de_jegue/models/payment_receipt_model.dart';
+import 'package:cangaia_de_jegue/models/shirt_size_model.dart';
 import 'package:cangaia_de_jegue/models/ticket_sale_model.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +30,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
   bool _isDeleting = false;
   bool _isDeliveringShirt = false;
   late Future<List<PaymentReceiptModel>> _receiptsFuture;
+  late Future<List<ShirtSizeModel>> _shirtSizesFuture;
 
   @override
   void initState() {
@@ -43,6 +45,9 @@ class _SaleDetailViewState extends State<SaleDetailView> {
     _receiptsFuture = _sale.id == null
         ? Future.value([])
         : _controller.getReceiptsBySale(_sale.id!);
+    _shirtSizesFuture = _sale.id == null
+        ? Future.value([])
+        : _controller.getShirtSizesBySale(_sale.id!);
   }
 
   @override
@@ -610,6 +615,45 @@ class _SaleDetailViewState extends State<SaleDetailView> {
                             subtitle: Text(
                               '${_formatDate(receipt.receivedAt)} - '
                               '${_paymentMethodLabel(receipt.paymentMethod)}',
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Tamanhos de camisa',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              FutureBuilder<List<ShirtSizeModel>>(
+                future: _shirtSizesFuture,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final sizes = snapshot.data!;
+                  if (sizes.isEmpty) {
+                    return const Text(
+                      'Nenhum tamanho registrado.',
+                      style: TextStyle(color: Colors.grey),
+                    );
+                  }
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: sizes
+                        .map(
+                          (s) => Chip(
+                            avatar: const Icon(Icons.checkroom, size: 16),
+                            label: Text(
+                              '${s.size} × ${s.quantity}',
+                              style: const TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ),
                         )

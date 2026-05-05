@@ -1,5 +1,7 @@
 import 'package:cangaia_de_jegue/models/expense_model.dart';
 import 'package:cangaia_de_jegue/models/payment_receipt_model.dart';
+import 'package:cangaia_de_jegue/models/shirt_order_model.dart';
+import 'package:cangaia_de_jegue/models/shirt_size_model.dart';
 import 'package:cangaia_de_jegue/models/ticket_sale_model.dart';
 import 'package:cangaia_de_jegue/models/user_model.dart';
 import 'package:path/path.dart';
@@ -25,7 +27,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 7,
+      version: 9,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE usuarios(
@@ -81,6 +83,25 @@ class AppDatabase {
             carga TEXT,
             criado_em TEXT NOT NULL,
             sincronizado_em TEXT
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE tamanhos_camisa(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            venda_id INTEGER NOT NULL,
+            tamanho TEXT NOT NULL,
+            quantidade INTEGER NOT NULL DEFAULT 1,
+            FOREIGN KEY(venda_id) REFERENCES vendas_ingressos(id)
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE pedidos_camisas(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tamanho TEXT NOT NULL,
+            quantidade INTEGER NOT NULL DEFAULT 1,
+            criado_em TEXT NOT NULL
           )
         ''');
 
@@ -143,6 +164,27 @@ class AppDatabase {
             )
           ''');
         }
+        if (oldVersion < 8) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS tamanhos_camisa(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              venda_id INTEGER NOT NULL,
+              tamanho TEXT NOT NULL,
+              quantidade INTEGER NOT NULL DEFAULT 1,
+              FOREIGN KEY(venda_id) REFERENCES vendas_ingressos(id)
+            )
+          ''');
+        }
+        if (oldVersion < 9) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS pedidos_camisas(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              tamanho TEXT NOT NULL,
+              quantidade INTEGER NOT NULL DEFAULT 1,
+              criado_em TEXT NOT NULL
+            )
+          ''');
+        }
       },
     );
   }
@@ -198,6 +240,11 @@ class AppDatabase {
     final db = await database;
     await db.delete(
       'recibos_pagamento',
+      where: 'venda_id = ?',
+      whereArgs: [id],
+    );
+    await db.delete(
+      'tamanhos_camisa',
       where: 'venda_id = ?',
       whereArgs: [id],
     );
@@ -379,6 +426,102 @@ class AppDatabase {
       'recibos_pagamento',
       receiptMap,
       conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<int> createShirtOrder(ShirtOrderModel order) async {
+    final db = await database;
+    return db.insert('pedidos_camisas', order.toMap());
+  }
+
+  Future<List<ShirtOrderModel>> listShirtOrders() async {
+    final db = await database;
+    final rows = await db.query(
+      'pedidos_camisas',
+      orderBy: 'criado_em DESC, id DESC',
+    );
+    return rows.map(ShirtOrderModel.fromMap).toList();
+  }
+
+  Future<int> deleteShirtOrder(int id) async {
+    final db = await database;
+    return db.delete('pedidos_camisas', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> replaceShirtSizesForSale(
+    int saleId,
+    List<ShirtSizeModel> sizes,
+  ) async {
+    final db = await database;
+    await db.delete(
+      'tamanhos_camisa',
+      where: 'venda_id = ?',
+      whereArgs: [saleId],
+    );
+    for (final size in sizes) {
+      await db.insert('tamanhos_camisa', size.toMap());
+    }
+  }
+
+  Future<List<ShirtSizeModel>> listShirtSizesBySale(int saleId) async {
+    final db = await database;
+    final rows = await db.query(
+      'tamanhos_camisa',
+      where: 'venda_id = ?',
+      whereArgs: [saleId],
+      orderBy: 'id ASC',
+    );
+    return rows.map(ShirtSizeModel.fromMap).toList();
+  }
+
+  Future<Map<String, int>> getShirtSoldTotals() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT tamanho, SUM(quantidade) AS total
+      FROM tamanhos_camisa
+      GROUP BY tamanho
+    ''');
+    return {
+      for (final row in rows)
+        row['tamanho'] as String: (row['total'] as num).toInt(),
+    };
+  }
+
+  Future<Map<String, int>> getShirtStockTotals() async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT tamanho, SUM(quantidade) AS total
+      FROM pedidos_camisas
+      GROUP BY tamanho
+    ''');
+    return {
+      for (final row in rows)
+        row['tamanho'] as String: (row['total'] as num).toInt(),
+    };
+  }
+
+  Future<List<Map<String, Object?>>> listAllShirtSizesWithSale() async {
+    final db = await database;
+    return db.rawQuery('''
+      SELECT
+        t.id,
+        t.venda_id,
+        t.tamanho,
+        t.quantidade,
+        v.nome_comprador,
+        v.telefone_comprador
+      FROM tamanhos_camisa t
+      INNER JOIN vendas_ingressos v ON v.id = t.venda_id
+      ORDER BY t.tamanho ASC, v.nome_comprador ASC
+    ''');
+  }
+
+  Future<void> deleteShirtSizesBySale(int saleId) async {
+    final db = await database;
+    await db.delete(
+      'tamanhos_camisa',
+      where: 'venda_id = ?',
+      whereArgs: [saleId],
     );
   }
 

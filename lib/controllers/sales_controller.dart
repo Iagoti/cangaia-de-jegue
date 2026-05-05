@@ -1,5 +1,6 @@
 import 'package:cangaia_de_jegue/database/app_database.dart';
 import 'package:cangaia_de_jegue/models/payment_receipt_model.dart';
+import 'package:cangaia_de_jegue/models/shirt_size_model.dart';
 import 'package:cangaia_de_jegue/models/ticket_sale_model.dart';
 import 'package:cangaia_de_jegue/services/sync_service.dart';
 
@@ -28,6 +29,7 @@ class SalesController {
     required String sellerUsername,
     double receivedAmount = 0,
     bool markAsPaid = false,
+    List<ShirtSizeModel> shirtSizes = const [],
   }) async {
     if (installments < 1 || installments > 3) {
       throw ArgumentError('Parcelamento deve ser entre 1 e 3 vezes.');
@@ -62,6 +64,13 @@ class SalesController {
           paymentMethod: 'nao_informado',
         ),
       );
+    }
+
+    if (shirtSizes.isNotEmpty) {
+      final sizesWithSaleId = shirtSizes
+          .map((s) => ShirtSizeModel(saleId: id, size: s.size, quantity: s.quantity))
+          .toList();
+      await AppDatabase.instance.replaceShirtSizesForSale(id, sizesWithSaleId);
     }
 
     return id;
@@ -189,6 +198,18 @@ class SalesController {
 
   Future<List<PaymentReceiptModel>> getReceiptsBySale(int saleId) {
     return AppDatabase.instance.listReceiptsBySale(saleId);
+  }
+
+  Future<List<ShirtSizeModel>> getShirtSizesBySale(int saleId) {
+    return AppDatabase.instance.listShirtSizesBySale(saleId);
+  }
+
+  Future<void> updateShirtSizes(int saleId, List<ShirtSizeModel> sizes) {
+    return AppDatabase.instance.replaceShirtSizesForSale(saleId, sizes);
+  }
+
+  Future<List<Map<String, Object?>>> getAllShirtSizesWithSale() {
+    return AppDatabase.instance.listAllShirtSizesWithSale();
   }
 
   Future<int> getPendingSyncCount() {
