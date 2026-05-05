@@ -110,15 +110,13 @@ class _ShirtsListViewState extends State<ShirtsListView> {
                     _TotalChip(
                       label: 'Vendidas',
                       value: totalSold,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.errorContainer.withAlpha(180),
+                      color: Colors.green.shade300,
                     ),
                     const SizedBox(width: 8),
                     _TotalChip(
                       label: 'Restantes',
                       value: totalRemaining,
-                      color: Colors.green.shade100,
+                      color: Colors.orange.shade300,
                     ),
                   ],
                 ),
@@ -240,7 +238,7 @@ class _SizeRow extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: isLow ? Colors.red.shade50 : null,
+      color: isLow ? Colors.green.shade50 : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
@@ -277,7 +275,7 @@ class _SizeRow extends StatelessWidget {
                     label: 'Vendidas',
                     value: summary.sold,
                     max: summary.stock == 0 ? 1 : summary.stock,
-                    color: Theme.of(context).colorScheme.error,
+                    color: Colors.green.shade400,
                   ),
                 ],
               ),
@@ -292,7 +290,7 @@ class _SizeRow extends StatelessWidget {
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: isLow
-                        ? Colors.red
+                        ? Colors.green
                         : Theme.of(context).colorScheme.primary,
                   ),
                 ),
