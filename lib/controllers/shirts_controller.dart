@@ -43,6 +43,19 @@ class ShirtsController {
     }).toList();
   }
 
+  /// Calcula o estoque disponível desconsiderando as camisas já vinculadas
+  /// à venda em edição (para que o editor possa redistribuir livremente).
+  Future<Map<String, int>> getRemainingStockForEdit(int saleId) async {
+    final stock = await AppDatabase.instance.getShirtStockTotals();
+    final soldExcluding =
+        await AppDatabase.instance.getShirtSoldTotalsExcludingSale(saleId);
+
+    return {
+      for (final size in ShirtSizeModel.validSizes)
+        size: ((stock[size] ?? 0) - (soldExcluding[size] ?? 0)).clamp(0, 999),
+    };
+  }
+
   Map<String, int> buildTotals(List<ShirtOrderModel> orders) {
     final totals = <String, int>{};
     for (final size in ShirtSizeModel.validSizes) {

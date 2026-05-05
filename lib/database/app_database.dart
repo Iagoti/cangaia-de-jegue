@@ -487,6 +487,20 @@ class AppDatabase {
     };
   }
 
+  Future<Map<String, int>> getShirtSoldTotalsExcludingSale(int saleId) async {
+    final db = await database;
+    final rows = await db.rawQuery('''
+      SELECT tamanho, SUM(quantidade) AS total
+      FROM tamanhos_camisa
+      WHERE venda_id != ?
+      GROUP BY tamanho
+    ''', [saleId]);
+    return {
+      for (final row in rows)
+        row['tamanho'] as String: (row['total'] as num).toInt(),
+    };
+  }
+
   Future<Map<String, int>> getShirtStockTotals() async {
     final db = await database;
     final rows = await db.rawQuery('''

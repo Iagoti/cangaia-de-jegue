@@ -1,4 +1,5 @@
 import 'package:cangaia_de_jegue/controllers/sales_controller.dart';
+import 'package:cangaia_de_jegue/controllers/shirts_controller.dart';
 import 'package:cangaia_de_jegue/models/payment_receipt_model.dart';
 import 'package:cangaia_de_jegue/models/shirt_size_model.dart';
 import 'package:cangaia_de_jegue/models/ticket_sale_model.dart';
@@ -20,6 +21,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
   static const List<String> _paymentMethods = ['PIX', 'dinheiro', 'cartao'];
   final _formKey = GlobalKey<FormState>();
   final _controller = SalesController();
+  final _shirtsController = ShirtsController();
   late TicketSaleModel _sale;
   late final TextEditingController _buyerController;
   late final TextEditingController _buyerPhoneController;
@@ -31,6 +33,8 @@ class _SaleDetailViewState extends State<SaleDetailView> {
   bool _isDeliveringShirt = false;
   late Future<List<PaymentReceiptModel>> _receiptsFuture;
   late Future<List<ShirtSizeModel>> _shirtSizesFuture;
+  List<_ShirtEntry> _editShirtEntries = [];
+  Map<String, int> _remainingStock = {};
 
   @override
   void initState() {
@@ -58,7 +62,9 @@ class _SaleDetailViewState extends State<SaleDetailView> {
     super.dispose();
   }
 
-  int get _currentQuantity => int.tryParse(_quantityController.text) ?? 0;
+  int get _currentQuantity => _isEditMode
+      ? _editShirtEntries.fold(0, (sum, e) => sum + e.quantity)
+      : _sale.ticketQuantity;
   double get _calculatedTotal => _currentQuantity * _ticketUnitPrice;
 
   void _refreshReceipts() {
@@ -68,8 +74,18 @@ class _SaleDetailViewState extends State<SaleDetailView> {
   }
 
   Future<void> _saveChanges() async {
-    if (!_formKey.currentState!.validate()) return;
     if (!_isEditMode) return;
+
+    if (_currentQuantity <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Adicione ao menos um tamanho de camisa.'),
+        ),
+      );
+      return;
+    }
+
+    if (!_formKey.currentState!.validate()) return;
 
     if (_calculatedTotal < _sale.receivedAmount) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,6 +98,31 @@ class _SaleDetailViewState extends State<SaleDetailView> {
       return;
     }
 
+    // Valida estoque (já descontando camisas desta venda)
+    final requestedBySize = <String, int>{};
+    for (final e in _editShirtEntries) {
+      requestedBySize[e.size] = (requestedBySize[e.size] ?? 0) + e.quantity;
+    }
+    final stockErrors = <String>[];
+    for (final entry in requestedBySize.entries) {
+      final available = _remainingStock[entry.key] ?? 0;
+      if (entry.value > available) {
+        stockErrors.add(
+          '${entry.key}: solicitado ${entry.value}, disponivel $available',
+        );
+      }
+    }
+    if (stockErrors.isNotEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sem estoque suficiente:\n${stockErrors.join('\n')}'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     try {
@@ -89,11 +130,23 @@ class _SaleDetailViewState extends State<SaleDetailView> {
         originalSale: _sale,
         buyerName: _buyerController.text.trim(),
         buyerPhone: _buyerPhoneController.text.trim(),
-        ticketQuantity: int.parse(_quantityController.text),
+        ticketQuantity: _currentQuantity,
         totalAmount: _calculatedTotal,
         installments: _installments,
         receivedNow: 0,
       );
+
+      final newSizes = _editShirtEntries
+          .where((e) => e.quantity > 0)
+          .map(
+            (e) => ShirtSizeModel(
+              saleId: _sale.id!,
+              size: e.size,
+              quantity: e.quantity,
+            ),
+          )
+          .toList();
+      await _controller.updateShirtSizes(_sale.id!, newSizes);
 
       if (!mounted) return;
       Navigator.of(context).pop('updated');
@@ -454,11 +507,29 @@ class _SaleDetailViewState extends State<SaleDetailView> {
     Navigator.of(context).pop('deleted');
   }
 
+  Future<void> _enterEditMode() async {
+    final sizes = _sale.id == null
+        ? <ShirtSizeModel>[]
+        : await _controller.getShirtSizesBySale(_sale.id!);
+    final remaining = _sale.id == null
+        ? <String, int>{}
+        : await _shirtsController.getRemainingStockForEdit(_sale.id!);
+    if (!mounted) return;
+    setState(() {
+      _editShirtEntries = sizes
+          .map((s) => _ShirtEntry(size: s.size, quantity: s.quantity))
+          .toList();
+      _remainingStock = remaining;
+      _isEditMode = true;
+    });
+  }
+
   void _cancelEdit() {
     setState(() {
-      _quantityController.text = _sale.ticketQuantity.toString();
       _buyerPhoneController.text = _sale.buyerPhone;
       _installments = _sale.installments;
+      _editShirtEntries = [];
+      _remainingStock = {};
       _isEditMode = false;
     });
   }
@@ -623,44 +694,172 @@ class _SaleDetailViewState extends State<SaleDetailView> {
                 },
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Tamanhos de camisa',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Tamanhos de camisa',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  if (_isEditMode)
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _editShirtEntries.add(
+                            _ShirtEntry(
+                              size: ShirtSizeModel.validSizes.first,
+                              quantity: 1,
+                            ),
+                          );
+                        });
+                      },
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Adicionar'),
+                    ),
+                ],
               ),
               const SizedBox(height: 8),
-              FutureBuilder<List<ShirtSizeModel>>(
-                future: _shirtSizesFuture,
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  final sizes = snapshot.data!;
-                  if (sizes.isEmpty) {
-                    return const Text(
-                      'Nenhum tamanho registrado.',
+              if (_isEditMode) ...[
+                if (_editShirtEntries.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      'Nenhum tamanho adicionado',
                       style: TextStyle(color: Colors.grey),
-                    );
-                  }
-                  return Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: sizes
-                        .map(
-                          (s) => Chip(
-                            avatar: const Icon(Icons.checkroom, size: 16),
-                            label: Text(
-                              '${s.size} × ${s.quantity}',
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                            ),
+                    ),
+                  )
+                else
+                  ...List.generate(_editShirtEntries.length, (index) {
+                    final entry = _editShirtEntries[index];
+                    final available = _remainingStock[entry.size] ?? 0;
+                    final exceedsStock = entry.quantity > available;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: DropdownButtonFormField<String>(
+                                  value: entry.size,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Tamanho',
+                                    isDense: true,
+                                  ),
+                                  items: ShirtSizeModel.validSizes
+                                      .map(
+                                        (s) => DropdownMenuItem(
+                                          value: s,
+                                          child: Text(s),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setState(
+                                      () => _editShirtEntries[index] =
+                                          _ShirtEntry(
+                                            size: value,
+                                            quantity: entry.quantity,
+                                          ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 2,
+                                child: TextFormField(
+                                  initialValue: entry.quantity.toString(),
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    labelText: 'Qtd',
+                                    isDense: true,
+                                    errorText:
+                                        exceedsStock ? 'Max: $available' : null,
+                                  ),
+                                  onChanged: (value) {
+                                    final qty = int.tryParse(value) ?? 1;
+                                    setState(
+                                      () => _editShirtEntries[index] =
+                                          _ShirtEntry(
+                                            size: entry.size,
+                                            quantity: qty,
+                                          ),
+                                    );
+                                  },
+                                  validator: (value) {
+                                    final qty = int.tryParse(value ?? '');
+                                    if (qty == null || qty <= 0) {
+                                      return 'Invalido';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline),
+                                color: Colors.red,
+                                onPressed: () => setState(
+                                  () => _editShirtEntries.removeAt(index),
+                                ),
+                              ),
+                            ],
                           ),
-                        )
-                        .toList(),
-                  );
-                },
-              ),
+                          if (_remainingStock.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4, top: 2),
+                              child: Text(
+                                'Disponivel: $available',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color:
+                                      exceedsStock ? Colors.red : Colors.grey,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+              ] else
+                FutureBuilder<List<ShirtSizeModel>>(
+                  future: _shirtSizesFuture,
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final sizes = snapshot.data!;
+                    if (sizes.isEmpty) {
+                      return const Text(
+                        'Nenhum tamanho registrado.',
+                        style: TextStyle(color: Colors.grey),
+                      );
+                    }
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: sizes
+                          .map(
+                            (s) => Chip(
+                              avatar: const Icon(Icons.checkroom, size: 16),
+                              label: Text(
+                                '${s.size} × ${s.quantity}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
+                ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _buyerController,
@@ -683,20 +882,12 @@ class _SaleDetailViewState extends State<SaleDetailView> {
               ),
               const SizedBox(height: 10),
               TextFormField(
-                controller: _quantityController,
-                enabled: _isEditMode,
-                keyboardType: TextInputType.number,
-                onChanged: (_) => setState(() {}),
+                enabled: false,
+                key: ValueKey<int>(_currentQuantity),
+                initialValue: '$_currentQuantity',
                 decoration: const InputDecoration(
-                  labelText: 'Quantidade de ingressos',
+                  labelText: 'Quantidade de camisas',
                 ),
-                validator: (value) {
-                  final quantity = int.tryParse(value ?? '');
-                  if (quantity == null || quantity <= 0) {
-                    return 'Quantidade invalida';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 10),
               TextFormField(
@@ -741,7 +932,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
                               if (_isEditMode) {
                                 _saveChanges();
                               } else {
-                                setState(() => _isEditMode = true);
+                                _enterEditMode();
                               }
                             },
                       child: Text(_isEditMode ? 'Salvar alteracoes' : 'Editar'),
@@ -788,4 +979,10 @@ class _SaleDetailViewState extends State<SaleDetailView> {
       ),
     );
   }
+}
+
+class _ShirtEntry {
+  _ShirtEntry({required this.size, required this.quantity});
+  final String size;
+  final int quantity;
 }
