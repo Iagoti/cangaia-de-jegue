@@ -98,9 +98,11 @@ class _DashboardViewState extends State<DashboardView> {
         SnackBar(
           content: Text(
             'Sync concluida. Enviados: ${result.sentEvents} | '
-            'Vendas recebidas: ${result.receivedSales} | '
-            'Recibos recebidos: ${result.receivedReceipts} | '
-            'Despesas recebidas: ${result.receivedExpenses}',
+            'Vendas: ${result.receivedSales} | '
+            'Recibos: ${result.receivedReceipts} | '
+            'Despesas: ${result.receivedExpenses} | '
+            'Tamanhos: ${result.receivedShirtSizes} | '
+            'Estoque: ${result.receivedShirtOrders}',
           ),
         ),
       );

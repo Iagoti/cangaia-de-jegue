@@ -10,12 +10,16 @@ class SyncSummary {
     required this.receivedSales,
     required this.receivedReceipts,
     required this.receivedExpenses,
+    required this.receivedShirtSizes,
+    required this.receivedShirtOrders,
   });
 
   final int sentEvents;
   final int receivedSales;
   final int receivedReceipts;
   final int receivedExpenses;
+  final int receivedShirtSizes;
+  final int receivedShirtOrders;
 }
 
 class SalesController {
@@ -237,6 +241,10 @@ class SalesController {
         final saleMap = await AppDatabase.instance.getSaleMapById(entityId);
         if (saleMap != null) {
           await _syncService.upsertVenda(saleMap);
+          // Sincroniza tamanhos de camisa junto com a venda
+          final tamanhos =
+              await AppDatabase.instance.listShirtSizesMapBySale(entityId);
+          await _syncService.replaceTamanhosCamisaBySale(entityId, tamanhos);
         }
       } else if (entityType == 'recibos_pagamento') {
         final receiptMap = await AppDatabase.instance.getReceiptMapById(
@@ -254,6 +262,14 @@ class SalesController {
         if (expenseMap != null) {
           await _syncService.upsertDespesa(expenseMap);
         }
+      } else if (entityType == 'pedidos_camisas' && operation == 'delete') {
+        await _syncService.deletePedidoCamisa(entityId);
+      } else if (entityType == 'pedidos_camisas') {
+        final orderMap =
+            await AppDatabase.instance.getShirtOrderMapById(entityId);
+        if (orderMap != null) {
+          await _syncService.upsertPedidoCamisa(orderMap);
+        }
       }
 
       await AppDatabase.instance.markSyncEventAsSynced(eventId);
@@ -268,6 +284,8 @@ class SalesController {
     final remoteSales = await _syncService.fetchVendas();
     final remoteReceipts = await _syncService.fetchRecibos();
     final remoteExpenses = await _syncService.fetchDespesas();
+    final remoteShirtSizes = await _syncService.fetchTamanhosCamisa();
+    final remoteShirtOrders = await _syncService.fetchPedidosCamisas();
 
     for (final sale in remoteSales) {
       await AppDatabase.instance.upsertSaleFromRemote(sale);
@@ -278,12 +296,20 @@ class SalesController {
     for (final expense in remoteExpenses) {
       await AppDatabase.instance.upsertExpenseFromRemote(expense);
     }
+    for (final size in remoteShirtSizes) {
+      await AppDatabase.instance.upsertTamanhoFromRemote(size);
+    }
+    for (final order in remoteShirtOrders) {
+      await AppDatabase.instance.upsertShirtOrderFromRemote(order);
+    }
 
     return SyncSummary(
       sentEvents: sentEvents,
       receivedSales: remoteSales.length,
       receivedReceipts: remoteReceipts.length,
       receivedExpenses: remoteExpenses.length,
+      receivedShirtSizes: remoteShirtSizes.length,
+      receivedShirtOrders: remoteShirtOrders.length,
     );
   }
 }

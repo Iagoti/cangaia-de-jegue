@@ -431,7 +431,13 @@ class AppDatabase {
 
   Future<int> createShirtOrder(ShirtOrderModel order) async {
     final db = await database;
-    return db.insert('pedidos_camisas', order.toMap());
+    final id = await db.insert('pedidos_camisas', order.toMap());
+    await _enqueueSyncEvent(
+      entityType: 'pedidos_camisas',
+      entityId: id,
+      operation: 'create',
+    );
+    return id;
   }
 
   Future<List<ShirtOrderModel>> listShirtOrders() async {
@@ -445,7 +451,16 @@ class AppDatabase {
 
   Future<int> deleteShirtOrder(int id) async {
     final db = await database;
-    return db.delete('pedidos_camisas', where: 'id = ?', whereArgs: [id]);
+    final rows =
+        await db.delete('pedidos_camisas', where: 'id = ?', whereArgs: [id]);
+    if (rows > 0) {
+      await _enqueueSyncEvent(
+        entityType: 'pedidos_camisas',
+        entityId: id,
+        operation: 'delete',
+      );
+    }
+    return rows;
   }
 
   Future<void> replaceShirtSizesForSale(
@@ -536,6 +551,48 @@ class AppDatabase {
       'tamanhos_camisa',
       where: 'venda_id = ?',
       whereArgs: [saleId],
+    );
+  }
+
+  Future<Map<String, Object?>?> getShirtOrderMapById(int id) async {
+    final db = await database;
+    final rows = await db.query(
+      'pedidos_camisas',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first;
+  }
+
+  Future<List<Map<String, Object?>>> listShirtSizesMapBySale(
+    int saleId,
+  ) async {
+    final db = await database;
+    return db.query(
+      'tamanhos_camisa',
+      where: 'venda_id = ?',
+      whereArgs: [saleId],
+      orderBy: 'id ASC',
+    );
+  }
+
+  Future<int> upsertShirtOrderFromRemote(Map<String, Object?> map) async {
+    final db = await database;
+    return db.insert(
+      'pedidos_camisas',
+      map,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<int> upsertTamanhoFromRemote(Map<String, Object?> map) async {
+    final db = await database;
+    return db.insert(
+      'tamanhos_camisa',
+      map,
+      conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 

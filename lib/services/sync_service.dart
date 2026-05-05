@@ -119,6 +119,103 @@ class SyncService {
     );
   }
 
+  // ── tamanhos_camisa ────────────────────────────────────────────────────────
+
+  Future<List<Map<String, Object?>>> fetchTamanhosCamisa() async {
+    const endpoint = '/rest/v1/tamanhos_camisa?select=*';
+    final response = await http.get(
+      Uri.parse('$_urlProjeto$endpoint'),
+      headers: _headers(),
+    );
+    _checkResponse(
+      response,
+      contexto: 'download de tamanhos de camisa',
+      endpoint: endpoint,
+    );
+    final decoded = jsonDecode(response.body) as List<dynamic>;
+    return decoded
+        .map((item) => Map<String, Object?>.from(item as Map))
+        .toList();
+  }
+
+  /// Remove todos os tamanhos de uma venda no remoto e insere os novos.
+  Future<void> replaceTamanhosCamisaBySale(
+    int vendaId,
+    List<Map<String, Object?>> tamanhos,
+  ) async {
+    final deleteEndpoint =
+        '/rest/v1/tamanhos_camisa?venda_id=eq.$vendaId';
+    final deleteResp = await http.delete(
+      Uri.parse('$_urlProjeto$deleteEndpoint'),
+      headers: _headers(),
+    );
+    _checkResponse(
+      deleteResp,
+      contexto: 'delete de tamanhos da venda $vendaId',
+      endpoint: deleteEndpoint,
+    );
+
+    if (tamanhos.isEmpty) return;
+
+    const upsertEndpoint = '/rest/v1/tamanhos_camisa?on_conflict=id';
+    final upsertResp = await http.post(
+      Uri.parse('$_urlProjeto$upsertEndpoint'),
+      headers: _headers(extra: {'Prefer': 'resolution=merge-duplicates'}),
+      body: jsonEncode(tamanhos),
+    );
+    _checkResponse(
+      upsertResp,
+      contexto: 'upsert de tamanhos da venda $vendaId',
+      endpoint: upsertEndpoint,
+    );
+  }
+
+  // ── pedidos_camisas ────────────────────────────────────────────────────────
+
+  Future<List<Map<String, Object?>>> fetchPedidosCamisas() async {
+    const endpoint = '/rest/v1/pedidos_camisas?select=*';
+    final response = await http.get(
+      Uri.parse('$_urlProjeto$endpoint'),
+      headers: _headers(),
+    );
+    _checkResponse(
+      response,
+      contexto: 'download de pedidos de camisas',
+      endpoint: endpoint,
+    );
+    final decoded = jsonDecode(response.body) as List<dynamic>;
+    return decoded
+        .map((item) => Map<String, Object?>.from(item as Map))
+        .toList();
+  }
+
+  Future<void> upsertPedidoCamisa(Map<String, Object?> pedido) async {
+    const endpoint = '/rest/v1/pedidos_camisas?on_conflict=id';
+    final response = await http.post(
+      Uri.parse('$_urlProjeto$endpoint'),
+      headers: _headers(extra: {'Prefer': 'resolution=merge-duplicates'}),
+      body: jsonEncode([pedido]),
+    );
+    _checkResponse(
+      response,
+      contexto: 'upsert de pedido de camisa',
+      endpoint: endpoint,
+    );
+  }
+
+  Future<void> deletePedidoCamisa(int id) async {
+    final endpoint = '/rest/v1/pedidos_camisas?id=eq.$id';
+    final response = await http.delete(
+      Uri.parse('$_urlProjeto$endpoint'),
+      headers: _headers(),
+    );
+    _checkResponse(
+      response,
+      contexto: 'delete de pedido de camisa',
+      endpoint: endpoint,
+    );
+  }
+
   Map<String, String> _headers({Map<String, String>? extra}) {
     return {
       'apikey': _chavePublica,
