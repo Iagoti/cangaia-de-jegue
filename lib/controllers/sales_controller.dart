@@ -26,12 +26,19 @@ class SalesController {
     required double totalAmount,
     required int installments,
     required String sellerUsername,
-  }) {
+    double receivedAmount = 0,
+    bool markAsPaid = false,
+  }) async {
     if (installments < 1 || installments > 3) {
       throw ArgumentError('Parcelamento deve ser entre 1 e 3 vezes.');
     }
 
-    return AppDatabase.instance.createSale(
+    final effectiveReceived = markAsPaid ? totalAmount : receivedAmount.clamp(0.0, totalAmount);
+    final paymentStatus = effectiveReceived >= totalAmount ? 'pago' : 'pendente';
+    final nowIso = DateTime.now().toIso8601String();
+    final receivedAt = effectiveReceived > 0 ? nowIso : null;
+
+    final id = await AppDatabase.instance.createSale(
       TicketSaleModel(
         buyerName: buyerName,
         buyerPhone: buyerPhone,
@@ -39,11 +46,25 @@ class SalesController {
         totalAmount: totalAmount,
         installments: installments,
         sellerUsername: sellerUsername,
-        createdAt: DateTime.now().toIso8601String(),
-        receivedAmount: 0,
-        paymentStatus: 'pendente',
+        createdAt: nowIso,
+        receivedAmount: effectiveReceived,
+        paymentStatus: paymentStatus,
+        receivedAt: receivedAt,
       ),
     );
+
+    if (effectiveReceived > 0) {
+      await AppDatabase.instance.addReceipt(
+        PaymentReceiptModel(
+          saleId: id,
+          amount: effectiveReceived,
+          receivedAt: nowIso,
+          paymentMethod: 'nao_informado',
+        ),
+      );
+    }
+
+    return id;
   }
 
   Future<List<TicketSaleModel>> getSales() {

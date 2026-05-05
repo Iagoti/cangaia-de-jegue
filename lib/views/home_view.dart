@@ -17,9 +17,11 @@ class _HomeViewState extends State<HomeView> {
   final _buyerController = TextEditingController();
   final _buyerPhoneController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
+  final _receivedAmountController = TextEditingController();
   final _controller = SalesController();
   int _installments = 1;
   bool _isSaving = false;
+  bool _markAsPaid = false;
 
   int get _currentQuantity => int.tryParse(_quantityController.text) ?? 0;
   double get _currentTotal => _currentQuantity * _ticketUnitPrice;
@@ -29,6 +31,7 @@ class _HomeViewState extends State<HomeView> {
     _buyerController.dispose();
     _buyerPhoneController.dispose();
     _quantityController.dispose();
+    _receivedAmountController.dispose();
     super.dispose();
   }
 
@@ -37,6 +40,9 @@ class _HomeViewState extends State<HomeView> {
 
     setState(() => _isSaving = true);
     try {
+      final receivedAmount =
+          double.tryParse(_receivedAmountController.text.trim().replaceAll(',', '.')) ?? 0;
+
       await _controller.registerSale(
         buyerName: _buyerController.text.trim(),
         buyerPhone: _buyerPhoneController.text.trim(),
@@ -44,12 +50,16 @@ class _HomeViewState extends State<HomeView> {
         totalAmount: _currentTotal,
         installments: _installments,
         sellerUsername: widget.loggedUser,
+        receivedAmount: receivedAmount,
+        markAsPaid: _markAsPaid,
       );
 
       _buyerController.clear();
       _buyerPhoneController.clear();
       _quantityController.text = '1';
+      _receivedAmountController.clear();
       _installments = 1;
+      _markAsPaid = false;
       setState(() {});
 
       if (!mounted) return;
@@ -148,7 +158,37 @@ class _HomeViewState extends State<HomeView> {
                         ],
                         onChanged: (value) => setState(() => _installments = value ?? 1),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _receivedAmountController,
+                        enabled: !_markAsPaid,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Valor recebido (opcional)',
+                          prefixText: 'R\$ ',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return null;
+                          final parsed = double.tryParse(value.trim().replaceAll(',', '.'));
+                          if (parsed == null || parsed < 0) return 'Valor invalido';
+                          if (parsed > _currentTotal) return 'Nao pode ultrapassar o valor total';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 4),
+                      CheckboxListTile(
+                        value: _markAsPaid,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Marcar como pago'),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (value) {
+                          setState(() {
+                            _markAsPaid = value ?? false;
+                            if (_markAsPaid) _receivedAmountController.clear();
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton(

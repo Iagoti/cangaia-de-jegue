@@ -737,6 +737,7 @@ class _SaleDetailViewState extends State<SaleDetailView> {
                   label: const Text('Falar no WhatsApp'),
                 ),
               ),
+              const SizedBox(height: 42),
             ],
           ),
         ),
