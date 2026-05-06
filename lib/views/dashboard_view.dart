@@ -6,6 +6,8 @@ import 'package:cangaia_de_jegue/views/expenses_list_view.dart';
 import 'package:cangaia_de_jegue/views/home_view.dart';
 import 'package:cangaia_de_jegue/views/login_view.dart';
 import 'package:cangaia_de_jegue/views/sales_list_view.dart';
+import 'package:cangaia_de_jegue/views/shirt_form_view.dart';
+import 'package:cangaia_de_jegue/views/shirts_list_view.dart';
 import 'package:flutter/material.dart';
 
 class DashboardView extends StatefulWidget {
@@ -64,6 +66,20 @@ class _DashboardViewState extends State<DashboardView> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _goToShirtForm() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ShirtFormView()));
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _goToShirtsList() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ShirtsListView()));
+    if (mounted) setState(() {});
+  }
+
   void _logout() {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginView()),
@@ -82,9 +98,11 @@ class _DashboardViewState extends State<DashboardView> {
         SnackBar(
           content: Text(
             'Sync concluida. Enviados: ${result.sentEvents} | '
-            'Vendas recebidas: ${result.receivedSales} | '
-            'Recibos recebidos: ${result.receivedReceipts} | '
-            'Despesas recebidas: ${result.receivedExpenses}',
+            'Vendas: ${result.receivedSales} | '
+            'Recibos: ${result.receivedReceipts} | '
+            'Despesas: ${result.receivedExpenses} | '
+            'Tamanhos: ${result.receivedShirtSizes} | '
+            'Estoque: ${result.receivedShirtOrders}',
           ),
         ),
       );
@@ -145,6 +163,18 @@ class _DashboardViewState extends State<DashboardView> {
                 icon: const Icon(Icons.list_alt),
                 title: const Text('Lista de vendas'),
                 onTap: () => _closeDrawerAndRun(_goToSalesListScreen),
+              ),
+              const SizedBox(height: 12),
+              const _DrawerSectionTitle(title: 'Camisas'),
+              _DrawerMenuItem(
+                icon: const Icon(Icons.checkroom),
+                title: const Text('Cadastrar camisas'),
+                onTap: () => _closeDrawerAndRun(_goToShirtForm),
+              ),
+              _DrawerMenuItem(
+                icon: const Icon(Icons.format_list_bulleted),
+                title: const Text('Lista de camisas'),
+                onTap: () => _closeDrawerAndRun(_goToShirtsList),
               ),
               const SizedBox(height: 12),
               const _DrawerSectionTitle(title: 'Despesas'),
@@ -250,6 +280,10 @@ class _DashboardViewState extends State<DashboardView> {
           final pendingSyncCount = data[1] as int;
           final totalExpenses = data[2] as double;
           final totalSales = sales.length;
+          final totalShirts = sales.fold<int>(
+            0,
+            (sum, sale) => sum + sale.ticketQuantity,
+          );
           final totalValue = sales.fold<double>(
             0,
             (sum, sale) => sum + sale.totalAmount,
@@ -274,6 +308,12 @@ class _DashboardViewState extends State<DashboardView> {
                     title: 'Vendas registradas',
                     value: '$totalSales',
                     icon: Icons.receipt_long,
+                  ),
+                  const SizedBox(height: 10),
+                  _DashboardCard(
+                    title: 'Camisas vendidas',
+                    value: '$totalShirts',
+                    icon: Icons.checkroom,
                   ),
                   const SizedBox(height: 10),
                   _DashboardCard(
