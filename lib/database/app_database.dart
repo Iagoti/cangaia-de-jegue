@@ -449,6 +449,24 @@ class AppDatabase {
     return rows.map(ShirtOrderModel.fromMap).toList();
   }
 
+  Future<int> updateShirtOrderQuantity(int id, int quantity) async {
+    final db = await database;
+    final rows = await db.update(
+      'pedidos_camisas',
+      {'quantidade': quantity},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (rows > 0) {
+      await _enqueueSyncEvent(
+        entityType: 'pedidos_camisas',
+        entityId: id,
+        operation: 'update',
+      );
+    }
+    return rows;
+  }
+
   Future<int> deleteShirtOrder(int id) async {
     final db = await database;
     final rows =
@@ -700,6 +718,55 @@ class AppDatabase {
         'ALTER TABLE eventos_sincronizacao_pendentes RENAME COLUMN synced_at TO sincronizado_em',
       );
     }
+  }
+
+  Future<void> deleteSalesNotIn(List<int> remoteIds) async {
+    final db = await database;
+    if (remoteIds.isEmpty) {
+      await db.delete('recibos_pagamento');
+      await db.delete('tamanhos_camisa');
+      await db.delete('vendas_ingressos');
+      return;
+    }
+    final placeholders = remoteIds.map((_) => '?').join(',');
+    await db.rawDelete(
+      'DELETE FROM recibos_pagamento WHERE venda_id NOT IN ($placeholders)',
+      remoteIds,
+    );
+    await db.rawDelete(
+      'DELETE FROM tamanhos_camisa WHERE venda_id NOT IN ($placeholders)',
+      remoteIds,
+    );
+    await db.rawDelete(
+      'DELETE FROM vendas_ingressos WHERE id NOT IN ($placeholders)',
+      remoteIds,
+    );
+  }
+
+  Future<void> deleteExpensesNotIn(List<int> remoteIds) async {
+    final db = await database;
+    if (remoteIds.isEmpty) {
+      await db.delete('despesas');
+      return;
+    }
+    final placeholders = remoteIds.map((_) => '?').join(',');
+    await db.rawDelete(
+      'DELETE FROM despesas WHERE id NOT IN ($placeholders)',
+      remoteIds,
+    );
+  }
+
+  Future<void> deleteShirtOrdersNotIn(List<int> remoteIds) async {
+    final db = await database;
+    if (remoteIds.isEmpty) {
+      await db.delete('pedidos_camisas');
+      return;
+    }
+    final placeholders = remoteIds.map((_) => '?').join(',');
+    await db.rawDelete(
+      'DELETE FROM pedidos_camisas WHERE id NOT IN ($placeholders)',
+      remoteIds,
+    );
   }
 
   Future<bool> _tableExists(Database db, String tableName) async {

@@ -3,6 +3,7 @@ import 'package:cangaia_de_jegue/models/payment_receipt_model.dart';
 import 'package:cangaia_de_jegue/models/shirt_size_model.dart';
 import 'package:cangaia_de_jegue/models/ticket_sale_model.dart';
 import 'package:cangaia_de_jegue/services/sync_service.dart';
+import 'package:flutter/foundation.dart';
 
 class SyncSummary {
   const SyncSummary({
@@ -230,50 +231,53 @@ class SalesController {
       final operation = event['operacao'] as String;
       final entityId = event['id_entidade'] as int?;
 
-      if (entityId == null) {
+      try {
+        if (entityId == null) {
+          await AppDatabase.instance.markSyncEventAsSynced(eventId);
+          continue;
+        }
+
+        if (entityType == 'vendas_ingressos' && operation == 'delete') {
+          await _syncService.deleteVenda(entityId);
+        } else if (entityType == 'vendas_ingressos') {
+          final saleMap = await AppDatabase.instance.getSaleMapById(entityId);
+          if (saleMap != null) {
+            await _syncService.upsertVenda(saleMap);
+            final tamanhos =
+                await AppDatabase.instance.listShirtSizesMapBySale(entityId);
+            await _syncService.replaceTamanhosCamisaBySale(entityId, tamanhos);
+          }
+        } else if (entityType == 'recibos_pagamento') {
+          final receiptMap = await AppDatabase.instance.getReceiptMapById(
+            entityId,
+          );
+          if (receiptMap != null) {
+            await _syncService.upsertRecibo(receiptMap);
+          }
+        } else if (entityType == 'despesas' && operation == 'delete') {
+          await _syncService.deleteDespesa(entityId);
+        } else if (entityType == 'despesas') {
+          final expenseMap = await AppDatabase.instance.getExpenseMapById(
+            entityId,
+          );
+          if (expenseMap != null) {
+            await _syncService.upsertDespesa(expenseMap);
+          }
+        } else if (entityType == 'pedidos_camisas' && operation == 'delete') {
+          await _syncService.deletePedidoCamisa(entityId);
+        } else if (entityType == 'pedidos_camisas') {
+          final orderMap =
+              await AppDatabase.instance.getShirtOrderMapById(entityId);
+          if (orderMap != null) {
+            await _syncService.upsertPedidoCamisa(orderMap);
+          }
+        }
+
         await AppDatabase.instance.markSyncEventAsSynced(eventId);
-        continue;
+        syncedCount++;
+      } catch (e) {
+        debugPrint('[SYNC] Falha ao processar evento $eventId ($entityType/$operation): $e');
       }
-
-      if (entityType == 'vendas_ingressos' && operation == 'delete') {
-        await _syncService.deleteVenda(entityId);
-      } else if (entityType == 'vendas_ingressos') {
-        final saleMap = await AppDatabase.instance.getSaleMapById(entityId);
-        if (saleMap != null) {
-          await _syncService.upsertVenda(saleMap);
-          // Sincroniza tamanhos de camisa junto com a venda
-          final tamanhos =
-              await AppDatabase.instance.listShirtSizesMapBySale(entityId);
-          await _syncService.replaceTamanhosCamisaBySale(entityId, tamanhos);
-        }
-      } else if (entityType == 'recibos_pagamento') {
-        final receiptMap = await AppDatabase.instance.getReceiptMapById(
-          entityId,
-        );
-        if (receiptMap != null) {
-          await _syncService.upsertRecibo(receiptMap);
-        }
-      } else if (entityType == 'despesas' && operation == 'delete') {
-        await _syncService.deleteDespesa(entityId);
-      } else if (entityType == 'despesas') {
-        final expenseMap = await AppDatabase.instance.getExpenseMapById(
-          entityId,
-        );
-        if (expenseMap != null) {
-          await _syncService.upsertDespesa(expenseMap);
-        }
-      } else if (entityType == 'pedidos_camisas' && operation == 'delete') {
-        await _syncService.deletePedidoCamisa(entityId);
-      } else if (entityType == 'pedidos_camisas') {
-        final orderMap =
-            await AppDatabase.instance.getShirtOrderMapById(entityId);
-        if (orderMap != null) {
-          await _syncService.upsertPedidoCamisa(orderMap);
-        }
-      }
-
-      await AppDatabase.instance.markSyncEventAsSynced(eventId);
-      syncedCount++;
     }
 
     return syncedCount;
@@ -284,8 +288,22 @@ class SalesController {
     final remoteSales = await _syncService.fetchVendas();
     final remoteReceipts = await _syncService.fetchRecibos();
     final remoteExpenses = await _syncService.fetchDespesas();
-    final remoteShirtSizes = await _syncService.fetchTamanhosCamisa();
-    final remoteShirtOrders = await _syncService.fetchPedidosCamisas();
+
+    List<Map<String, Object?>> remoteShirtSizes = [];
+    List<Map<String, Object?>> remoteShirtOrders = [];
+    var shirtOrderFetchSucceeded = false;
+
+    try {
+      remoteShirtSizes = await _syncService.fetchTamanhosCamisa();
+    } catch (e) {
+      debugPrint('[SYNC] Falha ao baixar tamanhos de camisa: $e');
+    }
+    try {
+      remoteShirtOrders = await _syncService.fetchPedidosCamisas();
+      shirtOrderFetchSucceeded = true;
+    } catch (e) {
+      debugPrint('[SYNC] Falha ao baixar pedidos de camisas: $e');
+    }
 
     for (final sale in remoteSales) {
       await AppDatabase.instance.upsertSaleFromRemote(sale);
@@ -301,6 +319,18 @@ class SalesController {
     }
     for (final order in remoteShirtOrders) {
       await AppDatabase.instance.upsertShirtOrderFromRemote(order);
+    }
+
+    final remoteSaleIds = remoteSales.map((s) => s['id'] as int).toList();
+    await AppDatabase.instance.deleteSalesNotIn(remoteSaleIds);
+
+    final remoteExpenseIds = remoteExpenses.map((e) => e['id'] as int).toList();
+    await AppDatabase.instance.deleteExpensesNotIn(remoteExpenseIds);
+
+    if (remoteShirtOrders.isNotEmpty || shirtOrderFetchSucceeded) {
+      final remoteShirtOrderIds =
+          remoteShirtOrders.map((o) => o['id'] as int).toList();
+      await AppDatabase.instance.deleteShirtOrdersNotIn(remoteShirtOrderIds);
     }
 
     return SyncSummary(

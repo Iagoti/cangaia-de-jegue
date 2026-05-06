@@ -39,6 +39,45 @@ class _ShirtsListViewState extends State<ShirtsListView> {
     if (saved == true && mounted) _reload();
   }
 
+  Future<void> _editQuantity(ShirtOrderModel order) async {
+    final controller = TextEditingController(text: order.quantity.toString());
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Editar quantidade — ${order.size}'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Quantidade',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final qty = int.tryParse(controller.text.trim());
+                if (qty != null && qty > 0) {
+                  Navigator.of(context).pop(qty);
+                }
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result == null || result == order.quantity || order.id == null) return;
+
+    await _controller.updateOrderQuantity(order.id!, result);
+    if (mounted) _reload();
+  }
+
   Future<void> _confirmDelete(ShirtOrderModel order) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -171,10 +210,21 @@ class _ShirtsListViewState extends State<ShirtsListView> {
                         subtitle: Text(
                           'Cadastrado em ${_formatDate(order.createdAt)}',
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          color: Colors.red,
-                          onPressed: () => _confirmDelete(order),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined),
+                              tooltip: 'Editar quantidade',
+                              onPressed: () => _editQuantity(order),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              color: Colors.red,
+                              tooltip: 'Excluir',
+                              onPressed: () => _confirmDelete(order),
+                            ),
+                          ],
                         ),
                       ),
                     ),

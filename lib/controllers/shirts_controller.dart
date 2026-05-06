@@ -30,6 +30,10 @@ class ShirtsController {
     return AppDatabase.instance.deleteShirtOrder(id);
   }
 
+  Future<void> updateOrderQuantity(int id, int quantity) {
+    return AppDatabase.instance.updateShirtOrderQuantity(id, quantity);
+  }
+
   Future<List<ShirtSummary>> getShirtSummary() async {
     final stock = await AppDatabase.instance.getShirtStockTotals();
     final sold = await AppDatabase.instance.getShirtSoldTotals();
