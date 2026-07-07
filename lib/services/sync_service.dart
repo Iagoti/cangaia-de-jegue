@@ -1,141 +1,151 @@
-import 'dart:convert';
-
+import 'package:cangaia_de_jegue/config/neon_config.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:postgres/postgres.dart';
 
 class SyncService {
-  static const String _urlProjeto = 'https://baqpfticrbesvnjgrlpb.supabase.co';
-  static const String _chavePublica =
-      'sb_publishable_Dgg38kqXSo2tjanu92rsnA_UsZlh8Ef';
-
   const SyncService();
 
   Future<List<Map<String, Object?>>> fetchVendas() async {
-    final response = await http.get(
-      Uri.parse('$_urlProjeto/rest/v1/vendas_ingressos?select=*'),
-      headers: _headers(),
+    return _fetchRows(
+      'download de vendas',
+      'SELECT * FROM vendas_ingressos ORDER BY id DESC',
     );
-    _checkResponse(
-      response,
-      contexto: 'download de vendas',
-      endpoint: '/rest/v1/vendas_ingressos?select=*',
-    );
-    final decoded = jsonDecode(response.body) as List<dynamic>;
-    return decoded
-        .map((item) => Map<String, Object?>.from(item as Map))
-        .toList();
   }
 
   Future<List<Map<String, Object?>>> fetchRecibos() async {
-    final response = await http.get(
-      Uri.parse('$_urlProjeto/rest/v1/recibos_pagamento?select=*'),
-      headers: _headers(),
+    return _fetchRows(
+      'download de recibos',
+      'SELECT * FROM recibos_pagamento ORDER BY id DESC',
     );
-    _checkResponse(
-      response,
-      contexto: 'download de recibos',
-      endpoint: '/rest/v1/recibos_pagamento?select=*',
-    );
-    final decoded = jsonDecode(response.body) as List<dynamic>;
-    return decoded
-        .map((item) => Map<String, Object?>.from(item as Map))
-        .toList();
   }
 
   Future<List<Map<String, Object?>>> fetchDespesas() async {
-    final response = await http.get(
-      Uri.parse('$_urlProjeto/rest/v1/despesas?select=*'),
-      headers: _headers(),
+    return _fetchRows(
+      'download de despesas',
+      'SELECT * FROM despesas ORDER BY data_despesa DESC, id DESC',
     );
-    _checkResponse(
-      response,
-      contexto: 'download de despesas',
-      endpoint: '/rest/v1/despesas?select=*',
-    );
-    final decoded = jsonDecode(response.body) as List<dynamic>;
-    return decoded
-        .map((item) => Map<String, Object?>.from(item as Map))
-        .toList();
   }
 
   Future<void> upsertVenda(Map<String, Object?> venda) async {
-    final endpoint = '/rest/v1/vendas_ingressos?on_conflict=id';
-    final uri = Uri.parse('$_urlProjeto$endpoint');
-    final response = await http.post(
-      uri,
-      headers: _headers(extra: {'Prefer': 'resolution=merge-duplicates'}),
-      body: jsonEncode([venda]),
+    await _execute(
+      'upsert de venda',
+      Sql.named('''
+INSERT INTO vendas_ingressos (
+  id,
+  nome_comprador,
+  telefone_comprador,
+  quantidade_ingressos,
+  valor_total,
+  parcelamento,
+  usuario_vendedor,
+  criado_em,
+  valor_recebido,
+  status_pagamento,
+  recebido_em,
+  camisa_entregue_em
+) VALUES (
+  @id,
+  @nome_comprador,
+  @telefone_comprador,
+  @quantidade_ingressos,
+  @valor_total,
+  @parcelamento,
+  @usuario_vendedor,
+  @criado_em,
+  @valor_recebido,
+  @status_pagamento,
+  @recebido_em,
+  @camisa_entregue_em
+)
+ON CONFLICT (id) DO UPDATE SET
+  nome_comprador = EXCLUDED.nome_comprador,
+  telefone_comprador = EXCLUDED.telefone_comprador,
+  quantidade_ingressos = EXCLUDED.quantidade_ingressos,
+  valor_total = EXCLUDED.valor_total,
+  parcelamento = EXCLUDED.parcelamento,
+  usuario_vendedor = EXCLUDED.usuario_vendedor,
+  criado_em = EXCLUDED.criado_em,
+  valor_recebido = EXCLUDED.valor_recebido,
+  status_pagamento = EXCLUDED.status_pagamento,
+  recebido_em = EXCLUDED.recebido_em,
+  camisa_entregue_em = EXCLUDED.camisa_entregue_em
+'''),
+      venda,
     );
-    _checkResponse(response, contexto: 'upsert de venda', endpoint: endpoint);
   }
 
   Future<void> deleteVenda(int id) async {
-    final response = await http.delete(
-      Uri.parse('$_urlProjeto/rest/v1/vendas_ingressos?id=eq.$id'),
-      headers: _headers(),
-    );
-    _checkResponse(
-      response,
-      contexto: 'delete de venda',
-      endpoint: '/rest/v1/vendas_ingressos?id=eq.$id',
+    await _execute(
+      'delete de venda',
+      Sql.named('DELETE FROM vendas_ingressos WHERE id = @id'),
+      {'id': id},
     );
   }
 
   Future<void> upsertRecibo(Map<String, Object?> recibo) async {
-    final response = await http.post(
-      Uri.parse('$_urlProjeto/rest/v1/recibos_pagamento?on_conflict=id'),
-      headers: _headers(extra: {'Prefer': 'resolution=merge-duplicates'}),
-      body: jsonEncode([recibo]),
-    );
-    _checkResponse(
-      response,
-      contexto: 'upsert de recibo',
-      endpoint: '/rest/v1/recibos_pagamento?on_conflict=id',
+    await _execute(
+      'upsert de recibo',
+      Sql.named('''
+INSERT INTO recibos_pagamento (
+  id,
+  venda_id,
+  valor,
+  recebido_em,
+  forma_pagamento
+) VALUES (
+  @id,
+  @venda_id,
+  @valor,
+  @recebido_em,
+  @forma_pagamento
+)
+ON CONFLICT (id) DO UPDATE SET
+  venda_id = EXCLUDED.venda_id,
+  valor = EXCLUDED.valor,
+  recebido_em = EXCLUDED.recebido_em,
+  forma_pagamento = EXCLUDED.forma_pagamento
+'''),
+      recibo,
     );
   }
 
   Future<void> upsertDespesa(Map<String, Object?> despesa) async {
-    final response = await http.post(
-      Uri.parse('$_urlProjeto/rest/v1/despesas?on_conflict=id'),
-      headers: _headers(extra: {'Prefer': 'resolution=merge-duplicates'}),
-      body: jsonEncode([despesa]),
-    );
-    _checkResponse(
-      response,
-      contexto: 'upsert de despesa',
-      endpoint: '/rest/v1/despesas?on_conflict=id',
+    await _execute(
+      'upsert de despesa',
+      Sql.named('''
+INSERT INTO despesas (
+  id,
+  descricao,
+  valor,
+  data_despesa
+) VALUES (
+  @id,
+  @descricao,
+  @valor,
+  @data_despesa
+)
+ON CONFLICT (id) DO UPDATE SET
+  descricao = EXCLUDED.descricao,
+  valor = EXCLUDED.valor,
+  data_despesa = EXCLUDED.data_despesa
+'''),
+      despesa,
     );
   }
 
   Future<void> deleteDespesa(int id) async {
-    final response = await http.delete(
-      Uri.parse('$_urlProjeto/rest/v1/despesas?id=eq.$id'),
-      headers: _headers(),
-    );
-    _checkResponse(
-      response,
-      contexto: 'delete de despesa',
-      endpoint: '/rest/v1/despesas?id=eq.$id',
+    await _execute(
+      'delete de despesa',
+      Sql.named('DELETE FROM despesas WHERE id = @id'),
+      {'id': id},
     );
   }
 
-  // ── tamanhos_camisa ────────────────────────────────────────────────────────
-
   Future<List<Map<String, Object?>>> fetchTamanhosCamisa() async {
-    const endpoint = '/rest/v1/tamanhos_camisa?select=*';
-    final response = await http.get(
-      Uri.parse('$_urlProjeto$endpoint'),
-      headers: _headers(),
+    return _fetchRows(
+      'download de tamanhos de camisa',
+      'SELECT * FROM tamanhos_camisa ORDER BY id ASC',
     );
-    _checkResponse(
-      response,
-      contexto: 'download de tamanhos de camisa',
-      endpoint: endpoint,
-    );
-    final decoded = jsonDecode(response.body) as List<dynamic>;
-    return decoded
-        .map((item) => Map<String, Object?>.from(item as Map))
-        .toList();
   }
 
   /// Remove todos os tamanhos de uma venda no remoto e insere os novos.
@@ -143,98 +153,148 @@ class SyncService {
     int vendaId,
     List<Map<String, Object?>> tamanhos,
   ) async {
-    final deleteEndpoint =
-        '/rest/v1/tamanhos_camisa?venda_id=eq.$vendaId';
-    final deleteResp = await http.delete(
-      Uri.parse('$_urlProjeto$deleteEndpoint'),
-      headers: _headers(),
-    );
-    _checkResponse(
-      deleteResp,
-      contexto: 'delete de tamanhos da venda $vendaId',
-      endpoint: deleteEndpoint,
-    );
+    await _withConnection((connection) async {
+      await connection.runTx((session) async {
+        await session.execute(
+          Sql.named('DELETE FROM tamanhos_camisa WHERE venda_id = @venda_id'),
+          parameters: {'venda_id': vendaId},
+          ignoreRows: true,
+        );
 
-    if (tamanhos.isEmpty) return;
-
-    const upsertEndpoint = '/rest/v1/tamanhos_camisa?on_conflict=id';
-    final upsertResp = await http.post(
-      Uri.parse('$_urlProjeto$upsertEndpoint'),
-      headers: _headers(extra: {'Prefer': 'resolution=merge-duplicates'}),
-      body: jsonEncode(tamanhos),
-    );
-    _checkResponse(
-      upsertResp,
-      contexto: 'upsert de tamanhos da venda $vendaId',
-      endpoint: upsertEndpoint,
-    );
+        for (final tamanho in tamanhos) {
+          await _upsertTamanho(session, tamanho);
+        }
+      });
+    });
+    debugPrint('[SYNC] replace de tamanhos da venda $vendaId no Neon');
   }
 
-  // ── pedidos_camisas ────────────────────────────────────────────────────────
-
   Future<List<Map<String, Object?>>> fetchPedidosCamisas() async {
-    const endpoint = '/rest/v1/pedidos_camisas?select=*';
-    final response = await http.get(
-      Uri.parse('$_urlProjeto$endpoint'),
-      headers: _headers(),
+    return _fetchRows(
+      'download de pedidos de camisas',
+      'SELECT * FROM pedidos_camisas ORDER BY criado_em DESC, id DESC',
     );
-    _checkResponse(
-      response,
-      contexto: 'download de pedidos de camisas',
-      endpoint: endpoint,
-    );
-    final decoded = jsonDecode(response.body) as List<dynamic>;
-    return decoded
-        .map((item) => Map<String, Object?>.from(item as Map))
-        .toList();
   }
 
   Future<void> upsertPedidoCamisa(Map<String, Object?> pedido) async {
-    const endpoint = '/rest/v1/pedidos_camisas?on_conflict=id';
-    final response = await http.post(
-      Uri.parse('$_urlProjeto$endpoint'),
-      headers: _headers(extra: {'Prefer': 'resolution=merge-duplicates'}),
-      body: jsonEncode([pedido]),
-    );
-    _checkResponse(
-      response,
-      contexto: 'upsert de pedido de camisa',
-      endpoint: endpoint,
+    await _execute(
+      'upsert de pedido de camisa',
+      Sql.named('''
+INSERT INTO pedidos_camisas (
+  id,
+  tamanho,
+  quantidade,
+  criado_em
+) VALUES (
+  @id,
+  @tamanho,
+  @quantidade,
+  @criado_em
+)
+ON CONFLICT (id) DO UPDATE SET
+  tamanho = EXCLUDED.tamanho,
+  quantidade = EXCLUDED.quantidade,
+  criado_em = EXCLUDED.criado_em
+'''),
+      pedido,
     );
   }
 
   Future<void> deletePedidoCamisa(int id) async {
-    final endpoint = '/rest/v1/pedidos_camisas?id=eq.$id';
-    final response = await http.delete(
-      Uri.parse('$_urlProjeto$endpoint'),
-      headers: _headers(),
-    );
-    _checkResponse(
-      response,
-      contexto: 'delete de pedido de camisa',
-      endpoint: endpoint,
+    await _execute(
+      'delete de pedido de camisa',
+      Sql.named('DELETE FROM pedidos_camisas WHERE id = @id'),
+      {'id': id},
     );
   }
 
-  Map<String, String> _headers({Map<String, String>? extra}) {
-    return {
-      'apikey': _chavePublica,
-      'Authorization': 'Bearer $_chavePublica',
-      'Content-Type': 'application/json',
-      ...?extra,
-    };
+  Future<List<Map<String, Object?>>> _fetchRows(
+    String contexto,
+    String sql,
+  ) async {
+    final result = await _withConnection((connection) {
+      return connection.execute(sql);
+    });
+    debugPrint('[SYNC] $contexto no Neon -> ${result.length} registros');
+    return result.map((row) => _normalizeRemoteMap(row.toColumnMap())).toList();
   }
 
-  void _checkResponse(
-    http.Response response, {
-    required String contexto,
-    required String endpoint,
-  }) {
-    debugPrint('[SYNC] $contexto -> ${response.statusCode} ($endpoint)');
-    debugPrint('[SYNC] Resposta: ${response.body}');
-    if (response.statusCode >= 200 && response.statusCode < 300) return;
-    throw Exception(
-      'Erro na sincronizacao ($contexto). Status ${response.statusCode}: ${response.body}',
+  Future<void> _execute(
+    String contexto,
+    Sql sql,
+    Map<String, Object?> parameters,
+  ) async {
+    await _withConnection((connection) {
+      return connection.execute(sql, parameters: parameters, ignoreRows: true);
+    });
+    debugPrint('[SYNC] $contexto no Neon concluido');
+  }
+
+  Future<T> _withConnection<T>(
+    Future<T> Function(Connection connection) action,
+  ) async {
+    final connection = await Connection.openFromUrl(
+      NeonConfig.driverConnectionUrl,
+    );
+    try {
+      return await action(connection);
+    } catch (error, stackTrace) {
+      debugPrint('[SYNC] Erro ao acessar Neon: $error');
+      debugPrint('[SYNC] Stacktrace: $stackTrace');
+      rethrow;
+    } finally {
+      await connection.close();
+    }
+  }
+
+  Future<void> _upsertTamanho(
+    Session session,
+    Map<String, Object?> tamanho,
+  ) async {
+    await session.execute(
+      Sql.named('''
+INSERT INTO tamanhos_camisa (
+  id,
+  venda_id,
+  tamanho,
+  quantidade
+) VALUES (
+  @id,
+  @venda_id,
+  @tamanho,
+  @quantidade
+)
+ON CONFLICT (id) DO UPDATE SET
+  venda_id = EXCLUDED.venda_id,
+  tamanho = EXCLUDED.tamanho,
+  quantidade = EXCLUDED.quantidade
+'''),
+      parameters: tamanho,
+      ignoreRows: true,
     );
   }
+
+  Map<String, Object?> _normalizeRemoteMap(Map<String, dynamic> map) {
+    final normalized = <String, Object?>{};
+    for (final entry in map.entries) {
+      normalized[entry.key] = _normalizeRemoteValue(entry.key, entry.value);
+    }
+    return normalized;
+  }
+
+  Object? _normalizeRemoteValue(String column, Object? value) {
+    if (value == null) return null;
+
+    if (value is DateTime) {
+      return value.toIso8601String();
+    }
+
+    if (_numericColumns.contains(column) && value is String) {
+      return double.parse(value);
+    }
+
+    return value;
+  }
+
+  static const _numericColumns = {'valor_total', 'valor_recebido', 'valor'};
 }

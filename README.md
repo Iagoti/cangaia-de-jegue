@@ -10,7 +10,7 @@ Aplicativo Flutter para controle de vendas da Cavalgada Cangaia de Jegue.
 - Registro de entrega de camisas com mensagem via WhatsApp.
 - Cadastro, edicao e exclusao de despesas.
 - Dashboard com totais de vendas, valores recebidos, pendencias e despesas.
-- Sincronizacao com Supabase quando houver registros pendentes.
+- Sincronizacao com Neon/PostgreSQL quando houver registros pendentes.
 - Icone e logo personalizados do evento.
 
 ## Tecnologias
@@ -18,7 +18,7 @@ Aplicativo Flutter para controle de vendas da Cavalgada Cangaia de Jegue.
 - Flutter
 - Dart
 - SQLite local com `sqflite`
-- Supabase via API REST
+- Neon/PostgreSQL
 
 ## Como Rodar
 
